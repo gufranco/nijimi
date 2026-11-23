@@ -12,7 +12,7 @@ describe('pixelsToYuv', () => {
 
     // Assert
     expect(Array.from(row.y).map((value) => Number(value.toFixed(4)))).toEqual([1, 0.299]);
-    expect(Array.from(row.u).map((value) => Number(value.toFixed(4)))).toEqual([0, -0.1471]);
-    expect(Array.from(row.v).map((value) => Number(value.toFixed(4)))).toEqual([0, 0.615]);
+    expect(Array.from(row.u).map((value) => Number(value.toFixed(4)))).toEqual([0, -0.1474]);
+    expect(Array.from(row.v).map((value) => Number(value.toFixed(4)))).toEqual([0, 0.6148]);
   });
 });

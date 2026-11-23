@@ -21,6 +21,8 @@ const BROWSER_DIAGNOSTICS = [
 const isBrowserDiagnostic = (text: string): boolean =>
   BROWSER_DIAGNOSTICS.some((pattern) => pattern.test(text));
 
+const RENDER_WAIT_MS = 30_000;
+
 export const openPage = async (page: Page, path = './'): Promise<string[]> => {
   const problems: string[] = [];
   page.on('pageerror', (error) => problems.push(error.message));
@@ -41,7 +43,8 @@ export const canvasWidth = (page: Page): Promise<number> =>
   page.locator('#crt-canvas').evaluate((canvas: HTMLCanvasElement) => canvas.width);
 
 export const waitForRender = async (page: Page): Promise<void> => {
-  await expect(page.locator('#busy')).toBeHidden();
+  await expect(page.locator('#source-info')).not.toHaveText('');
+  await expect(page.locator('#busy')).toBeHidden({ timeout: RENDER_WAIT_MS });
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 };
 

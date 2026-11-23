@@ -5,6 +5,9 @@ type FileHandler = (file: File, slot: FileSlot) => void;
 
 const firstFile = (files: FileList | null | undefined): File | null => files?.item(0) ?? null;
 
+const slotOf = (file: File): FileSlot =>
+  file.type.startsWith('video/') || file.type === 'image/gif' ? FileSlot.Clip : FileSlot.Main;
+
 const bindPicker = (
   button: HTMLButtonElement,
   input: HTMLInputElement,
@@ -35,7 +38,7 @@ const bindDrop = (screen: HTMLElement, onFile: FileHandler): void => {
     screen.classList.remove('is-dragging');
     const file = firstFile(event.dataTransfer?.files);
     if (file !== null) {
-      onFile(file, FileSlot.Main);
+      onFile(file, slotOf(file));
     }
   });
 };
@@ -52,11 +55,12 @@ export const bindFiles = (input: {
     FileSlot.Flicker,
     input.onFile
   );
+  bindPicker(input.elements.clipButton, input.elements.clipInput, FileSlot.Clip, input.onFile);
   bindDrop(input.elements.screen, input.onFile);
   input.doc.addEventListener('paste', (event) => {
     const file = firstFile(event.clipboardData?.files);
     if (file !== null) {
-      input.onFile(file, FileSlot.Main);
+      input.onFile(file, slotOf(file));
     }
   });
 };

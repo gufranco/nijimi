@@ -5,7 +5,8 @@ const MESSAGES: Readonly<Record<InputError, MessageKey>> = {
   [InputError.NotPng]: 'errorNotPng',
   [InputError.FileTooBig]: 'errorFileTooBig',
   [InputError.TooLarge]: 'errorTooLarge',
-  [InputError.Corrupt]: 'errorCorrupt'
+  [InputError.Corrupt]: 'errorCorrupt',
+  [InputError.UnsupportedClip]: 'errorNotPng'
 };
 
 export const errorMessage = (error: InputError): MessageKey => MESSAGES[error];

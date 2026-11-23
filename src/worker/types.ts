@@ -14,3 +14,10 @@ export interface MessagePort {
   readonly postMessage: (message: unknown, transfer: Transferable[]) => void;
   readonly addEventListener: (type: 'message', listener: (event: MessageEvent) => void) => void;
 }
+
+export interface WorkerReply {
+  readonly message: unknown;
+  readonly transfer: Transferable[];
+}
+
+export type WorkerHandler = (data: unknown) => Promise<WorkerReply>;

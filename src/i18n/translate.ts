@@ -1,11 +1,13 @@
 import { EN } from './en';
+import { JA } from './ja';
 import { Locale } from './locale';
 import { PT_BR } from './ptBr';
 import type { MessageKey, Messages } from './types';
 
 const CATALOGS: Readonly<Record<Locale, Messages>> = {
   [Locale.En]: EN,
-  [Locale.PtBr]: PT_BR
+  [Locale.PtBr]: PT_BR,
+  [Locale.Ja]: JA
 };
 
 export const translate = (

@@ -15,7 +15,7 @@ describe('startWorker', () => {
     };
 
     // Act
-    const started = startWorker(scope);
+    const started = startWorker(scope, () => Promise.resolve({ message: null, transfer: [] }));
 
     // Assert
     expect(started).toBe(true);
@@ -27,7 +27,7 @@ describe('startWorker', () => {
     const scope = globalThis;
 
     // Act
-    const started = startWorker(scope);
+    const started = startWorker(scope, () => Promise.resolve({ message: null, transfer: [] }));
 
     // Assert
     expect(started).toBe(false);

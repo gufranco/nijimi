@@ -31,6 +31,7 @@ export default defineConfig({
           include: [
             'src/display/**/*.test.ts',
             'src/input/**/*.test.ts',
+            'src/clip/**/*.test.ts',
             'src/ui/**/*.test.ts',
             'src/worker/**/*.test.ts',
             'src/main.test.ts'

@@ -5,7 +5,7 @@ import { MaskKind } from './maskKind';
 describe('MaskKind', () => {
   it('keeps the mask values that shared links carry', () => {
     // Arrange
-    const expected = ['none', 'aperture-grille', 'slot-mask', 'shadow-mask'];
+    const expected = ['none', 'aperture-grille', 'slot-mask', 'shadow-mask', 'lcd-grid'];
 
     // Act
     const values = Object.values(MaskKind);

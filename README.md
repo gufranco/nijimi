@@ -6,13 +6,19 @@ Open it at <https://gufranco.github.io/nijimi/>.
 
 ## Use it
 
-1. Choose a PNG, drop one on the screen, or paste one.
+1. Choose a PNG, drop one on the screen, or paste one. For motion, choose a clip: WebM, MP4, animated GIF or animated PNG.
 2. Pick the connection, the video standard and the console whose timing you want.
-3. Adjust the picture and the screen, then compare with the original or export the result as a PNG.
+3. Adjust the picture and the screen, then compare with the original, export the result as a PNG, or export a clip as a video.
 
 The address bar keeps every setting, so a link reproduces the same preview for anyone who opens it with the same image.
 
+The page follows your browser language in English, Brazilian Portuguese or Japanese, and the language menu switches it.
+
 Art exported at an integer scale, such as 4x, is detected and processed at its native size. The native size limit is 1024 x 1024.
+
+After loading, a console check tells you whether the art fits the console you picked: its native resolution, the number of colors on screen, and the color depth of its palette. When something only works in a special hardware mode, such as interlace or shadow/highlight, the check names it, and a size the console cannot draw lists the consoles that can.
+
+A clip is read from start to end, whatever its length, and sampled at the field rate of the console and standard you picked. Each field goes through the signal once while a counter shows progress, then the clip plays in a loop. Screen changes apply while it plays; signal changes render it again, and a new standard only remaps the fields. Decoded frames and rendered fields are kept in the browser's private file storage on this device, which costs about 0.5 MB per field at 320 x 240, and are deleted when you load another clip or close the page; a browser that refuses that storage keeps them in memory, which limits the length to what memory holds. Video is read by playing it at half speed, so reading takes about twice its length, and a heavily loaded machine can miss a frame, which then shows the frame before it. Sound is dropped. Export video records one loop as WebM, or as MP4 where that is the only format the browser records; a browser without MediaRecorder hides the button. Firefox reads a fragmented MP4, such as a browser screen recording, as one frame long; convert it to WebM first.
 
 ## What it simulates
 
@@ -24,9 +30,9 @@ Art exported at an integer scale, such as 4x, is detected and processed at its n
 | Composite  | Dither blended into solid color, artifact color on fine stripes, dot crawl at color edges |
 | RF         | Composite plus a softer picture, optional noise, ghosting and the sound beat              |
 
-Standards: NTSC, PAL-B/G and PAL-M. Console timing: NES, SNES in 256 and 512 modes, Genesis H32 and H40, Master System, PlayStation 256 and 320, or a custom dot clock.
+Standards: NTSC, PAL-B/G and PAL-M. Console timing: Atari 2600, Atari 5200 and 7800 in 160 and 320 modes, Atari Jaguar at 256 and 320, NES, SNES in 256 and 512 modes, Genesis H32 and H40, Master System, SG-1000, 32X, Nintendo 64 in 320 and 640 modes, Saturn in 320, 352, 640 and 704 modes, PlayStation 256, 320, 368, 512 and 640, Game Boy, Game Boy Pocket and Light, Game Boy Color, Game Gear, or a custom dot clock. Picking a handheld switches to RGB and the handheld LCD screen, since handhelds have no TV output.
 
-The screen adds gamma, scanlines whose width follows brightness, an aperture grille, slot mask or shadow mask, bloom, curvature and overscan. Without WebGL2 the page still shows the signal, without those screen effects.
+The screen adds gamma, scanlines whose width follows brightness, an aperture grille, slot mask, shadow mask or LCD grid at an adjustable pitch, bloom, curvature and overscan. A screen model sets these together to approximate a consumer TV, a professional or broadcast monitor, a PC or arcade monitor, or a handheld LCD. Without WebGL2 the page still shows the signal, without those screen effects.
 
 How the signal is modeled, and the numbers behind it, are in [`REFERENCE.md`](REFERENCE.md).
 

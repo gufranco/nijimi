@@ -1,6 +1,7 @@
 import { MaskKind } from '../settings/maskKind';
 import { compileProgram } from './compileProgram';
 import { displayGeometry } from './displayGeometry';
+import { sizeCanvas } from './sizeCanvas';
 import { DisplayKind } from './displayKind';
 import { SHADER_SOURCE } from './shaderSource';
 import type { Display, DisplayGeometry, DisplayInput } from './types';
@@ -11,7 +12,8 @@ const MASK_CODES: Readonly<Record<MaskKind, number>> = {
   [MaskKind.None]: 0,
   [MaskKind.ApertureGrille]: 1,
   [MaskKind.SlotMask]: 2,
-  [MaskKind.ShadowMask]: 3
+  [MaskKind.ShadowMask]: 3,
+  [MaskKind.LcdGrid]: 4
 };
 
 interface GlResources {
@@ -48,6 +50,7 @@ const setUniforms = (
   gl.uniform1f(uniform('uGamma'), input.gamma);
   gl.uniform1f(uniform('uScanlines'), input.settings.scanlines);
   gl.uniform1i(uniform('uMask'), MASK_CODES[input.settings.mask]);
+  gl.uniform1i(uniform('uMaskPitch'), input.settings.maskPitch);
   gl.uniform1f(uniform('uMaskStrength'), input.settings.maskStrength);
   gl.uniform1f(uniform('uBloom'), input.settings.bloom);
   gl.uniform1f(uniform('uCurvature'), input.settings.curvature);
@@ -65,8 +68,7 @@ const drawFrame = (
     scan: input.scan,
     overscan: input.settings.overscan
   });
-  canvas.width = geometry.width;
-  canvas.height = geometry.height;
+  sizeCanvas(canvas, geometry.width, geometry.height);
   gl.viewport(0, 0, geometry.width, geometry.height);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, resources.texture);

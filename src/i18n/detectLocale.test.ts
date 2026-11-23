@@ -9,7 +9,10 @@ describe('detectLocale', () => {
     [['pt'], Locale.PtBr],
     [['pt-PT'], Locale.PtBr],
     [['en-GB', 'pt-BR'], Locale.En],
-    [['ja-JP'], Locale.En],
+    [['ja-JP'], Locale.Ja],
+    [['ja'], Locale.Ja],
+    [['ko-KR', 'ja-JP'], Locale.Ja],
+    [['ko-KR'], Locale.En],
     [[], Locale.En]
   ])('picks a locale for %j', (languages, expected) => {
     // Arrange

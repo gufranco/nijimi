@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CrtModel } from '../settings/crtModel';
 import { MaskKind } from '../settings/maskKind';
 import type { DisplaySettings } from '../settings/types';
 import { ScanMode } from '../signal/scanMode';
@@ -9,6 +10,8 @@ import { DisplayKind } from './displayKind';
 import type { Display } from './types';
 
 const PLAIN: DisplaySettings = {
+  crt: CrtModel.Custom,
+  maskPitch: 1,
   scanlines: 0,
   mask: MaskKind.None,
   maskStrength: 0,

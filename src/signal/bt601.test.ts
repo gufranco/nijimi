@@ -15,17 +15,20 @@ describe('BT601', () => {
     expect(total).toBeCloseTo(1, 12);
   });
 
-  it('scales U and V so 100 percent bars stay inside 4/3 of white', () => {
+  it('scales U by 0.493 and V by 0.877, which rotated 33 degrees give the I and Q weights', () => {
     // Arrange
-    const scales = [BT601.uScale, BT601.vScale];
+    const angle = (33 * Math.PI) / 180;
 
     // Act
-    const peaks = [scales[0] ?? 0, scales[1] ?? 0].map(
-      (scale, index) => scale * (index === 0 ? 0.886 : 0.701)
-    );
+    const iq = [
+      -Math.sin(angle) * BT601.uScale,
+      Math.cos(angle) * BT601.vScale,
+      Math.cos(angle) * BT601.uScale,
+      Math.sin(angle) * BT601.vScale
+    ].map((weight) => Math.round(weight * 100) / 100);
 
     // Assert
-    expect(peaks[0]).toBeCloseTo(0.436, 3);
-    expect(peaks[1]).toBeCloseTo(0.615, 3);
+    expect([BT601.uScale, BT601.vScale]).toEqual([0.493, 0.877]);
+    expect(iq).toEqual([-0.27, 0.74, 0.41, 0.48]);
   });
 });

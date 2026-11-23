@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { create2dDisplay } from '../display/create2dDisplay';
 import { createDisplay } from '../display/createDisplay';
+import { encodeGif } from '../../tests/fixtures/encodeGif';
+import { createMemoryStore } from '../clip/createMemoryStore';
+import type { FrameStore } from '../clip/types';
 import { createLogger } from '../logging/createLogger';
 import { startApp } from './startApp';
 import type { App, AppDeps } from './types';
@@ -33,6 +36,48 @@ const pngFile = async (
   return new File([blob], name, { type });
 };
 
+const gifFile = (delayCentiseconds: number): File =>
+  new File(
+    [
+      encodeGif({
+        width: 2,
+        height: 1,
+        palette: [
+          [0, 0, 0],
+          [255, 0, 0],
+          [0, 0, 255],
+          [255, 255, 255]
+        ],
+        frames: [
+          { pixels: [1, 2], delayCentiseconds },
+          { pixels: [3, 0], delayCentiseconds }
+        ]
+      })
+    ],
+    'walk.gif',
+    { type: 'image/gif' }
+  );
+
+const choose = (select: HTMLSelectElement, value: string): void => {
+  select.value = value;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const refusingWorker = (): AppDeps['worker'] => {
+  const refusing = new EventTarget();
+  return Object.assign(refusing, {
+    postMessage: (message: unknown) => {
+      const id =
+        typeof message === 'object' && message !== null && 'id' in message ? message.id : -1;
+      queueMicrotask(() =>
+        refusing.dispatchEvent(
+          new MessageEvent('message', { data: { id, ok: false, message: 'refused' } })
+        )
+      );
+    }
+  });
+};
+
 interface Booted {
   readonly app: App;
   readonly root: HTMLDivElement;
@@ -42,6 +87,18 @@ interface Booted {
   readonly downloads: string[];
   readonly errors: Error[];
 }
+
+const SCHEDULER: AppDeps['scheduler'] = {
+  request: (tick) => requestAnimationFrame(tick),
+  cancel: (handle) => {
+    cancelAnimationFrame(handle);
+  }
+};
+
+const wait = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const boot = (overrides: Partial<AppDeps> = {}): Booted => {
   const root = document.createElement('div');
@@ -65,6 +122,19 @@ const boot = (overrides: Partial<AppDeps> = {}): Booted => {
     logger: createLogger((error) => errors.splice(errors.length, 0, error)),
     createDisplay,
     download: (blob, name) => downloads.splice(downloads.length, 0, `${name}:${blob.type}`),
+    scheduler: SCHEDULER,
+    imageDecoder: ImageDecoder,
+    recordingType: 'video/webm',
+    wait,
+    openStore: () => Promise.resolve(createMemoryStore()),
+    createWorker: () => {
+      const extra = new Worker(new URL('../worker/signal.worker.ts', import.meta.url), {
+        type: 'module'
+      });
+      created.push({ worker: extra, root });
+      return extra;
+    },
+    workerCount: 2,
     ...overrides
   };
   const app = startApp(deps);
@@ -158,6 +228,56 @@ describe('startApp', () => {
       '8 x 4 native, Detected 8x scale'
     );
     expect(page.query('#busy', HTMLElement).hidden).toBe(true);
+  });
+
+  it('checks a 320x224 picture against the Genesis H40 preset after loading', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40&x=1' });
+    const file = await pngFile(320, 224);
+
+    // Act
+    await page.pick(file);
+
+    // Assert
+    expect(page.query('#console-check', HTMLElement).hidden).toBe(false);
+    expect(
+      Array.from(
+        page.query('#console-check-list', HTMLElement).children,
+        (item) => item.textContent
+      )
+    ).toEqual([
+      '320x224: a native resolution of this preset.',
+      '2 colors on screen, within the limit of 61.',
+      'Up to 2 levels per color channel, within the 8 of its palette.'
+    ]);
+  });
+
+  it('rechecks the picture when the console preset changes, without reloading it', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40&x=1' });
+    await page.pick(await pngFile(320, 224));
+    const preset = page.query('select[name=p]', HTMLSelectElement);
+    Array.from(preset.options).forEach((option) => {
+      option.toggleAttribute('selected', option.value === 'nes');
+    });
+    page.query('#controls', HTMLFormElement).reset();
+
+    // Act
+    preset.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Assert
+    expect(
+      Array.from(page.query('#console-check-list', HTMLElement).children, (item) => [
+        item.getAttribute('data-outcome'),
+        item.textContent
+      ]).slice(0, 2)
+    ).toEqual([
+      ['fail', '320x224: not a resolution this preset draws.'],
+      [
+        'fail',
+        'Presets that draw this size: Genesis, H40; PlayStation, 320 wide; 32X; Atari 7800, 320 wide; Atari 5200, 320 wide; Nintendo 64, 320 wide; Saturn, 320 wide; Atari Jaguar, 320 wide.'
+      ]
+    ]);
   });
 
   it('reports only the native size of art drawn at 1x', async () => {
@@ -265,6 +385,27 @@ describe('startApp', () => {
     );
   });
 
+  it('moves every linked screen control when a screen model is chosen', () => {
+    // Arrange
+    const page = boot();
+    const model = page.query('select[name=t]', HTMLSelectElement);
+    Array.from(model.options).forEach((option) => {
+      option.toggleAttribute('selected', option.value === 'bvm');
+    });
+    page.query('#controls', HTMLFormElement).reset();
+
+    // Act
+    model.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Assert
+    expect([
+      page.query('input[name=sl]', HTMLInputElement).value,
+      page.query('input[name=b]', HTMLInputElement).value,
+      page.query('input[name=cv]', HTMLInputElement).value,
+      page.hashes.at(-1)
+    ]).toEqual(['0.95', '0.1', '0', '#t=bvm&sl=0.95&ms=0.25&b=0.1&cv=0']);
+  });
+
   it('switches the language from the header and keeps it in the link', () => {
     // Arrange
     const page = boot();
@@ -296,7 +437,7 @@ describe('startApp', () => {
     expect(page.query('#flicker-remove-button', HTMLElement).hidden).toBe(true);
   });
 
-  it('shows the original beside the CRT and zooms the screen', () => {
+  it('shows the original over the CRT at a chosen split', () => {
     // Arrange
     const page = boot();
     const toggle = page.query('#compare-toggle', HTMLInputElement);
@@ -306,13 +447,39 @@ describe('startApp', () => {
     toggle.click();
     split.setAttribute('value', '30');
     split.dispatchEvent(new Event('input'));
-    page.query('input[name=zoom][value="4"]', HTMLInputElement).click();
 
     // Assert
     expect(page.query('#source-canvas', HTMLElement).hidden).toBe(false);
     expect(page.query('#split-field', HTMLElement).hidden).toBe(false);
     expect(page.query('#canvas-wrap', HTMLElement).style.getPropertyValue('--split')).toBe('30%');
-    expect(page.query('#canvas-wrap', HTMLElement).getAttribute('data-zoom')).toBe('4');
+  });
+
+  it('keeps the zoom across setting changes and resets it for a new picture', async () => {
+    // Arrange
+    const page = boot();
+    await page.pick(await pngFile(32, 16));
+    page.query('#zoom-in-button', HTMLButtonElement).click();
+    page.query('input[name=c][value=rgb]', HTMLInputElement).click();
+    await page.app.idle();
+    const afterSettings = page.query('#zoom-readout', HTMLElement).textContent;
+
+    // Act
+    await page.pick(await pngFile(16, 8, 'other.png'));
+
+    // Assert
+    expect(afterSettings).toBe('1.5x');
+    expect(page.query('#zoom-readout', HTMLElement).textContent).toBe('1.0x');
+  });
+
+  it('relabels the full-screen button when full screen changes', () => {
+    // Arrange
+    const page = boot({ languages: ['pt-BR'] });
+
+    // Act
+    document.dispatchEvent(new Event('fullscreenchange'));
+
+    // Assert
+    expect(page.query('#fullscreen-button', HTMLElement).textContent).toBe('Tela cheia');
   });
 
   it('exports the preview as a PNG', async () => {
@@ -366,19 +533,7 @@ describe('startApp', () => {
 
   it('reports a render the worker refuses', async () => {
     // Arrange
-    const refusing = new EventTarget();
-    const worker = Object.assign(refusing, {
-      postMessage: (message: unknown) => {
-        const id =
-          typeof message === 'object' && message !== null && 'id' in message ? message.id : -1;
-        queueMicrotask(() =>
-          refusing.dispatchEvent(
-            new MessageEvent('message', { data: { id, ok: false, message: 'refused' } })
-          )
-        );
-      }
-    });
-    const page = boot({ worker });
+    const page = boot({ worker: refusingWorker() });
 
     // Act
     await page.pick(await pngFile(32, 16));
@@ -403,6 +558,24 @@ describe('startApp', () => {
 
     // Assert
     expect(page.errors[0]?.message).toContain('background task failed');
+  });
+
+  it('logs why a corrupt file was refused', async () => {
+    // Arrange
+    const page = boot();
+    const header = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0,
+      8, 0, 0, 0, 8
+    ]);
+
+    // Act
+    await page.pick(new File([header], 'cut.png', { type: 'image/png' }));
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe(
+      'This file could not be decoded as a PNG.'
+    );
+    expect(page.errors[0]?.message).toContain('PNG integrity check failed');
   });
 
   it('keeps the page from navigating when a form is submitted', () => {
@@ -433,11 +606,211 @@ describe('startApp', () => {
       worker: Object.assign(worker, { postMessage: () => undefined }),
       logger: createLogger(() => undefined),
       createDisplay,
-      download: () => undefined
+      download: () => undefined,
+      scheduler: SCHEDULER,
+      imageDecoder: undefined,
+      recordingType: null,
+      wait,
+      openStore: () => Promise.resolve(createMemoryStore()),
+      createWorker: () => Object.assign(new EventTarget(), { postMessage: () => undefined }),
+      workerCount: 1
     };
     const start = (): App => startApp(deps);
 
     // Assert
     expect(start).toThrow('#app container is unavailable');
+  });
+
+  it('plays a GIF clip at the console field rate, names its fields and offers a video export', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+
+    // Act
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Assert
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '2 x 1 native, 11 fields at 59.92 Hz'
+    );
+    expect(page.query('#export-video-button', HTMLButtonElement).hidden).toBe(false);
+    expect(page.query('#busy', HTMLElement).hidden).toBe(true);
+    expect(page.query('#crt-canvas', HTMLCanvasElement).hasAttribute('width')).toBe(true);
+    expect(page.query('#notice', HTMLElement).textContent).toBe('');
+  });
+
+  it('exports one loop of the clip as a video', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    page.query('#export-video-button', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect(page.downloads).toEqual(['nijimi-crt.webm:video/webm']);
+  });
+
+  it('reports a video export the recorder refuses', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40', recordingType: 'video/x-none' });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    page.query('#export-video-button', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe('The video could not be exported.');
+    expect(page.errors.map((error) => error.message.split(' {')[0])).toEqual([
+      'video export failed'
+    ]);
+  });
+
+  it('exports no video before a clip is loaded', async () => {
+    // Arrange
+    const page = boot();
+
+    // Act
+    page.query('#export-video-button', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect(page.downloads).toEqual([]);
+  });
+
+  it('hides the video export and records nothing when the browser cannot record', async () => {
+    // Arrange
+    const page = boot({ recordingType: null });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    page.query('#export-video-button', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect(page.query('#export-video-button', HTMLButtonElement).hidden).toBe(true);
+    expect(page.downloads).toEqual([]);
+  });
+
+  it('maps the clip to a new field rate without decoding it again, and decodes it again at a new scale', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    choose(page.query('select[name=s]', HTMLSelectElement), 'pal-bg');
+    await page.app.idle();
+    const pal = page.query('#source-info', HTMLElement).textContent;
+    choose(page.query('select[name=x]', HTMLSelectElement), '2');
+    await page.app.idle();
+
+    // Assert
+    expect(pal).toBe('2 x 1 native, 9 fields at 49.7 Hz');
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '2 x 1 native, 9 fields at 49.7 Hz'
+    );
+  });
+
+  it('keeps playing the rendered clip when only the screen changes', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+    await page.pick(gifFile(10), '#clip-input');
+    const bloom = page.query('input[name=b]', HTMLInputElement);
+
+    // Act
+    bloom.value = '0.8';
+    bloom.dispatchEvent(new Event('input', { bubbles: true }));
+    await page.app.idle();
+
+    // Assert
+    expect(page.hashes.at(-1)).toContain('b=0.8');
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '2 x 1 native, 11 fields at 59.92 Hz'
+    );
+  });
+
+  it('keeps the whole of a clip longer than five seconds', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+
+    // Act
+    await page.pick(gifFile(400), '#clip-input');
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe('');
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '2 x 1 native, 479 fields at 59.92 Hz'
+    );
+  });
+
+  it('logs when the frames of a replaced clip cannot be discarded', async () => {
+    // Arrange
+    const openStore = (): Promise<FrameStore> => {
+      const memory = createMemoryStore();
+      return Promise.resolve({
+        append: memory.append,
+        seal: async (frameBytes) => ({
+          ...(await memory.seal(frameBytes)),
+          discard: () => Promise.reject(new Error('locked'))
+        })
+      });
+    };
+    const page = boot({ openStore });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    await page.pick(await pngFile(64, 32));
+
+    // Assert
+    expect(page.errors.map((error) => error.message.split(' {')[0])).toContain(
+      'discarding the frames of a replaced clip failed'
+    );
+  });
+
+  it('refuses a clip the browser cannot decode', async () => {
+    // Arrange
+    const page = boot();
+    const zip = new File([Uint8Array.from([0x50, 0x4b])], 'clip.zip', { type: 'application/zip' });
+
+    // Act
+    await page.pick(zip, '#clip-input');
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe(
+      'This browser cannot decode this clip. Use WebM, MP4, GIF or animated PNG.'
+    );
+    expect(page.query('#empty-state', HTMLElement).hidden).toBe(false);
+  });
+
+  it('replaces a clip with a picked PNG and stops offering the video export', async () => {
+    // Arrange
+    const page = boot();
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    await page.pick(await pngFile(64, 32));
+
+    // Assert
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '8 x 4 native, Detected 8x scale'
+    );
+    expect(page.query('#export-video-button', HTMLButtonElement).hidden).toBe(true);
+  });
+
+  it('reports a clip the worker refuses to render', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40', worker: refusingWorker() });
+
+    // Act
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe(
+      'The preview could not be rendered.'
+    );
+    expect(page.errors.map((error) => error.message.split(' {')[0])).toEqual([
+      'clip render failed'
+    ]);
   });
 });

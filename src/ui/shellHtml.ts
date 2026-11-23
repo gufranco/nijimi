@@ -23,13 +23,6 @@ const connectionRadios = CONNECTIONS.map(
       <label class="segment"><input type="radio" name="c" value="${value}"><span data-i18n="${label}"></span></label>`
 ).join('');
 
-const zoomRadios = [1, 2, 4]
-  .map(
-    (level) =>
-      `<label class="segment"><input type="radio" name="zoom" value="${String(level)}"${level === 1 ? ' checked' : ''}><span>${String(level)}x</span></label>`
-  )
-  .join('');
-
 export const SHELL_HTML = `
 <a class="skip-link" href="#controls" data-i18n="skipToControls"></a>
 <header class="masthead">
@@ -40,26 +33,29 @@ export const SHELL_HTML = `
     <select id="language" name="l">
       <option value="en">English</option>
       <option value="pt-BR">Português (Brasil)</option>
+      <option value="ja" lang="ja">日本語</option>
     </select>
   </form>
 </header>
 <main class="layout">
   <section class="stage" aria-labelledby="screen-heading">
     <h2 id="screen-heading" class="visually-hidden" data-i18n="crtScreenLabel"></h2>
-    <div class="tv">
+    <div class="tv" id="tv">
       <div class="tv-body">
         <div class="tv-bezel">
           <div class="tv-screen" id="screen" tabindex="0" role="region" data-i18n-label="sectionScreen">
-            <div class="canvas-wrap" id="canvas-wrap" data-zoom="1">
+            <div class="canvas-wrap" id="canvas-wrap">
               <canvas id="crt-canvas" class="crt-canvas"></canvas>
               <canvas id="source-canvas" class="source-canvas" hidden></canvas>
             </div>
             <div class="empty-state" id="empty-state">
               <p class="empty-title" data-i18n="dropHint"></p>
-              <button type="button" class="button button-primary" id="choose-button" data-i18n="choosePng"></button>
+              <div class="empty-actions">
+                <button type="button" class="button button-primary" id="choose-button" data-i18n="choosePng"></button>
+                <button type="button" class="button" id="clip-button" data-i18n="chooseClip"></button>
+              </div>
               <p class="hint" data-i18n="pasteHint"></p>
             </div>
-            <p class="busy" id="busy" hidden data-i18n="rendering"></p>
           </div>
         </div>
         <div class="tv-panel" aria-hidden="true">
@@ -71,6 +67,7 @@ export const SHELL_HTML = `
       <div class="tv-feet" aria-hidden="true"><span></span><span></span></div>
     </div>
     <div class="toolbar">
+      <p class="busy" id="busy" hidden><span class="busy-dot" aria-hidden="true"></span><span data-i18n="rendering"></span> <span id="busy-progress"></span></p>
       <label class="toggle" for="compare-toggle">
         <input type="checkbox" id="compare-toggle">
         <span data-i18n="compare"></span>
@@ -79,15 +76,24 @@ export const SHELL_HTML = `
         <span class="field-label" data-i18n="compareSplit"></span>
         <input type="range" id="compare-split" min="0" max="100" step="1" value="50">
       </label>
-      <fieldset class="segmented">
-        <legend data-i18n="zoom"></legend>
-        ${zoomRadios}
-      </fieldset>
+      <div class="zoom-controls" role="group" data-i18n-label="zoom">
+        <button type="button" class="button button-icon" id="zoom-out-button" data-i18n-label="zoomOut">-</button>
+        <output class="zoom-readout" id="zoom-readout" aria-live="polite">1.0x</output>
+        <button type="button" class="button button-icon" id="zoom-in-button" data-i18n-label="zoomIn">+</button>
+        <button type="button" class="button" id="reset-view-button" data-i18n="resetView"></button>
+      </div>
+      <button type="button" class="button" id="fullscreen-button" data-i18n="fullscreen"></button>
       <button type="button" class="button" id="export-button" data-i18n="exportPng" disabled></button>
+      <button type="button" class="button" id="export-video-button" data-i18n="exportVideo" hidden></button>
       <button type="button" class="button" id="copy-link-button" data-i18n="copyLink"></button>
     </div>
+    <p class="view-hint" data-i18n="viewHint"></p>
     <p class="notice" id="notice" role="status" aria-live="polite"></p>
     <p class="source-info" id="source-info"></p>
+    <section class="console-check" id="console-check" aria-labelledby="console-check-heading" hidden>
+      <h3 id="console-check-heading" class="console-check-title" data-i18n="consoleCheck"></h3>
+      <ul class="console-check-list" id="console-check-list"></ul>
+    </section>
   </section>
   <form class="controls" id="controls" data-i18n-label="controls" novalidate>
     <fieldset class="group">
@@ -125,9 +131,11 @@ export const SHELL_HTML = `
     </fieldset>
     <fieldset class="group">
       <legend data-i18n="sectionScreen"></legend>
+      ${select('t', 'crtModel')}
       ${range('sl', 'scanlines', 0, 1, 0.05)}
       ${select('m', 'mask')}
       ${range('ms', 'maskStrength', 0, 1, 0.05)}
+      ${range('mp', 'maskPitch', 1, 4, 1)}
       ${range('b', 'bloom', 0, 1, 0.05)}
       ${range('cv', 'curvature', 0, 1, 0.05)}
       <label class="toggle" for="control-os">
@@ -157,4 +165,5 @@ export const SHELL_HTML = `
 </footer>
 <input type="file" id="file-input" accept="image/png" hidden>
 <input type="file" id="flicker-input" accept="image/png" hidden>
+<input type="file" id="clip-input" accept="video/webm,video/mp4,image/gif,image/apng,.apng,.png" hidden>
 `;

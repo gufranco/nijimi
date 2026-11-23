@@ -15,6 +15,17 @@ describe('translate', () => {
     expect(text).toBe('Este PNG tem 2048 x 1536 na escala nativa. O limite é 1024 x 1024.');
   });
 
+  it('fills placeholders in Japanese', () => {
+    // Arrange
+    const params = { scale: '4' };
+
+    // Act
+    const text = translate(Locale.Ja, 'scaleDetected', params);
+
+    // Assert
+    expect(text).toBe('4倍を検出');
+  });
+
   it('leaves an unknown placeholder as written', () => {
     // Arrange
     const params = { scale: '4' };

@@ -4,12 +4,16 @@ import { Locale } from '../i18n/locale';
 import { Connection } from '../signal/connection';
 import { ConsolePreset } from '../signal/consolePreset';
 import { FrameView } from '../signal/frameView';
+import { HANDHELD_PRESETS } from '../signal/handheldPresets';
 import { PalDecoding } from '../signal/palDecoding';
 import { ScanMode } from '../signal/scanMode';
 import { Separation } from '../signal/separation';
 import type { SignalSettings } from '../signal/types';
 import { VideoStandard } from '../signal/videoStandard';
+import { CrtModel } from './crtModel';
+import { CRT_PRESETS } from './crtPresets';
 import { MaskKind } from './maskKind';
+import { reconcileCrtModel } from './reconcileCrtModel';
 import type { AppSettings, DisplaySettings } from './types';
 
 export interface HashField {
@@ -46,7 +50,15 @@ const signal = (settings: AppSettings, patch: Partial<SignalSettings>): AppSetti
 
 const display = (settings: AppSettings, patch: Partial<DisplaySettings>): AppSettings => ({
   ...settings,
-  display: { ...settings.display, ...patch }
+  display: reconcileCrtModel({ ...settings.display, ...patch })
+});
+
+const model = (settings: AppSettings, crt: CrtModel): AppSettings => ({
+  ...settings,
+  display:
+    crt === CrtModel.Custom
+      ? { ...settings.display, crt }
+      : { ...settings.display, ...CRT_PRESETS[crt], crt }
 });
 
 const rf = (settings: AppSettings, patch: Partial<SignalSettings['rf']>): AppSettings =>
@@ -72,7 +84,10 @@ export const HASH_FIELDS: readonly HashField[] = [
     'p',
     z.enum(ConsolePreset),
     (s) => s.signal.preset,
-    (s, preset) => signal(s, { preset })
+    (s, preset) =>
+      HANDHELD_PRESETS.has(preset)
+        ? model(signal(s, { preset, connection: Connection.Rgb }), CrtModel.HandheldLcd)
+        : signal(s, { preset })
   ),
   field(
     'cd',
@@ -152,6 +167,7 @@ export const HASH_FIELDS: readonly HashField[] = [
     (s) => s.signal.rf.beat,
     (s, beat) => rf(s, { beat })
   ),
+  field('t', z.enum(CrtModel), (s) => s.display.crt, model),
   field(
     'sl',
     unit,
@@ -169,6 +185,12 @@ export const HASH_FIELDS: readonly HashField[] = [
     unit,
     (s) => s.display.maskStrength,
     (s, maskStrength) => display(s, { maskStrength })
+  ),
+  field(
+    'mp',
+    whole(1, 4),
+    (s) => s.display.maskPitch,
+    (s, maskPitch) => display(s, { maskPitch })
   ),
   field(
     'b',

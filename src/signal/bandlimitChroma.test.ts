@@ -66,10 +66,10 @@ describe('bandlimitChroma', () => {
     expect(peak(qOut)).toBeLessThan(0.2 / 5);
   });
 
-  it('filters PAL U and V with the same 1.3 MHz bandwidth', () => {
+  it('filters PAL U and V with the same 1.56 MHz bandwidth', () => {
     // Arrange
-    const u = tone(1.3e6, 0.3);
-    const v = tone(1.3e6, 0.3);
+    const u = tone(1.56e6, 0.3);
+    const v = tone(1.56e6, 0.3);
 
     // Act
     const limited = bandlimitChroma({

@@ -118,4 +118,56 @@ describe('browserDeps', () => {
     window.removeEventListener('error', listener);
     expect(reported).toEqual(['browserDeps logs this on purpose {"step":"test"}']);
   });
+
+  it('schedules frames with animation frames and cancels them', async () => {
+    // Arrange
+    const deps = depsFor();
+    const ticks: number[] = [];
+    const cancelled = deps.scheduler.request((now) => ticks.splice(ticks.length, 0, now));
+
+    // Act
+    deps.scheduler.cancel(cancelled);
+    await new Promise<void>((resolve) => {
+      deps.scheduler.request(() => {
+        resolve();
+      });
+    });
+
+    // Assert
+    expect(ticks).toEqual([]);
+  });
+
+  it('offers the image decoder, a recording type and a timer', async () => {
+    // Arrange
+    const deps = depsFor();
+    const started = performance.now();
+
+    // Act
+    await deps.wait(20);
+
+    // Assert
+    expect(deps.imageDecoder).toBe(window.ImageDecoder);
+    expect(deps.recordingType).toBe('video/webm;codecs=vp9');
+    expect(performance.now() - started).toBeGreaterThanOrEqual(19);
+  });
+
+  it('stores clip frames in the private file system and sizes the worker pool from the cores', async () => {
+    // Arrange
+    const deps = depsFor();
+    const store = await deps.openStore();
+    await store.append(Uint8Array.from([5, 6]));
+
+    // Act
+    const reader = await store.seal(2);
+    const worker = deps.createWorker();
+
+    // Assert
+    expect([...(await reader.read(0))]).toEqual([5, 6]);
+    expect(deps.workerCount).toBe(Math.max(1, Math.min(navigator.hardwareConcurrency - 1, 8)));
+    expect(worker).toBeInstanceOf(Worker);
+    if (worker instanceof Worker) {
+      worker.terminate();
+    }
+    await reader.discard();
+  });
 });

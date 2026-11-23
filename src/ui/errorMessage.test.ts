@@ -8,7 +8,8 @@ describe('errorMessage', () => {
     [InputError.NotPng, 'errorNotPng'],
     [InputError.FileTooBig, 'errorFileTooBig'],
     [InputError.TooLarge, 'errorTooLarge'],
-    [InputError.Corrupt, 'errorCorrupt']
+    [InputError.Corrupt, 'errorCorrupt'],
+    [InputError.UnsupportedClip, 'errorNotPng']
   ])('maps %s to the %s message', (error, key) => {
     // Arrange
     const input = error;

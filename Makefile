@@ -1,6 +1,6 @@
 IMAGE := nijimi-dev
 ACTIONLINT_IMAGE := rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
-DOCKER_RUN := docker run --rm --init --ulimit core=0 \
+DOCKER_RUN := docker run --rm --init --ipc=host --ulimit core=0 \
 	-v "$(CURDIR)":/app \
 	-v nijimi-node-modules:/app/node_modules \
 	-w /app

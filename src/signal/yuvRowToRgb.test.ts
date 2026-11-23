@@ -7,8 +7,8 @@ describe('yuvRowToRgb', () => {
     // Arrange
     const row = {
       y: Float64Array.from([1, 0.299]),
-      u: Float64Array.from([0, -0.14713]),
-      v: Float64Array.from([0, 0.61499])
+      u: Float64Array.from([0, -0.14741]),
+      v: Float64Array.from([0, 0.61478])
     };
 
     // Act
@@ -24,8 +24,8 @@ describe('yuvRowToRgb', () => {
     // Arrange
     const row = {
       y: Float64Array.from([0.299]),
-      u: Float64Array.from([-0.14713]),
-      v: Float64Array.from([0.61499])
+      u: Float64Array.from([-0.14741]),
+      v: Float64Array.from([0.61478])
     };
 
     // Act

@@ -5,7 +5,7 @@ import { InputError } from './inputError';
 describe('InputError', () => {
   it('names each way a file can be refused', () => {
     // Arrange
-    const expected = ['not-png', 'file-too-big', 'too-large', 'corrupt'];
+    const expected = ['not-png', 'file-too-big', 'too-large', 'corrupt', 'unsupported-clip'];
 
     // Act
     const values = Object.values(InputError);

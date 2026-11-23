@@ -1,4 +1,5 @@
 export enum Locale {
   En = 'en',
-  PtBr = 'pt-BR'
+  PtBr = 'pt-BR',
+  Ja = 'ja'
 }

@@ -1,5 +1,6 @@
 import { sampleAt } from '../signal/sampleAt';
 import { displayGeometry } from './displayGeometry';
+import { sizeCanvas } from './sizeCanvas';
 import { DisplayKind } from './displayKind';
 import { required } from './required';
 import type { Display, DisplayGeometry, DisplayInput } from './types';
@@ -32,8 +33,7 @@ const drawScaled = (context: CanvasRenderingContext2D, input: DisplayInput): Dis
     0,
     0
   );
-  context.canvas.width = geometry.width;
-  context.canvas.height = geometry.height;
+  sizeCanvas(context.canvas, geometry.width, geometry.height);
   context.imageSmoothingEnabled = true;
   const cropX = input.image.width * geometry.crop;
   const cropY = input.image.height * geometry.crop;

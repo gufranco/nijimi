@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CrtModel } from '../settings/crtModel';
 import { MaskKind } from '../settings/maskKind';
 import { ScanMode } from '../signal/scanMode';
 import { create2dDisplay } from './create2dDisplay';
@@ -7,6 +8,8 @@ import { DisplayKind } from './displayKind';
 import type { Display } from './types';
 
 const SETTINGS = {
+  crt: CrtModel.Custom,
+  maskPitch: 1,
   scanlines: 1,
   mask: MaskKind.ApertureGrille,
   maskStrength: 1,

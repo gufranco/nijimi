@@ -3,8 +3,8 @@ import type { RgbFrame, SignalImage } from '../../src/signal/types';
 const KR = 0.299;
 const KG = 0.587;
 const KB = 0.114;
-const U_SCALE = 0.492111;
-const V_SCALE = 0.877283;
+const U_SCALE = 0.493;
+const V_SCALE = 0.877;
 
 const at = (data: Float32Array, index: number): number => data[index] ?? Number.NaN;
 

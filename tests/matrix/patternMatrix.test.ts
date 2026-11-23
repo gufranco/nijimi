@@ -36,9 +36,9 @@ const cells = DITHER_PATTERNS.flatMap((pattern) =>
 );
 
 describe('every dither pattern through every connection, standard and console', () => {
-  it('covers 24 patterns, 5 connections, 3 standards and 9 presets', () => {
+  it('covers 24 patterns, 5 connections, 3 standards and 31 presets', () => {
     // Arrange
-    const expected = 24 * 5 * 3 * 9;
+    const expected = 24 * 5 * 3 * 31;
 
     // Act
     const count = cells.length;

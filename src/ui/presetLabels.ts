@@ -1,0 +1,36 @@
+import type { MessageKey } from '../i18n/types';
+import { ConsolePreset } from '../signal/consolePreset';
+
+export const PRESET_LABELS: Readonly<Record<ConsolePreset, MessageKey>> = {
+  [ConsolePreset.Nes]: 'presetNes',
+  [ConsolePreset.Snes256]: 'presetSnes256',
+  [ConsolePreset.Snes512]: 'presetSnes512',
+  [ConsolePreset.GenesisH32]: 'presetGenesisH32',
+  [ConsolePreset.GenesisH40]: 'presetGenesisH40',
+  [ConsolePreset.MasterSystem]: 'presetSms',
+  [ConsolePreset.Ps1W256]: 'presetPs1W256',
+  [ConsolePreset.Ps1W320]: 'presetPs1W320',
+  [ConsolePreset.Ps1W368]: 'presetPs1W368',
+  [ConsolePreset.Ps1W512]: 'presetPs1W512',
+  [ConsolePreset.Ps1W640]: 'presetPs1W640',
+  [ConsolePreset.Sg1000]: 'presetSg1000',
+  [ConsolePreset.Sega32x]: 'preset32x',
+  [ConsolePreset.Atari2600]: 'presetAtari2600',
+  [ConsolePreset.Atari7800W160]: 'presetAtari7800W160',
+  [ConsolePreset.Atari7800W320]: 'presetAtari7800W320',
+  [ConsolePreset.Atari5200W160]: 'presetAtari5200W160',
+  [ConsolePreset.Atari5200W320]: 'presetAtari5200W320',
+  [ConsolePreset.N64W320]: 'presetN64W320',
+  [ConsolePreset.N64W640]: 'presetN64W640',
+  [ConsolePreset.SaturnW320]: 'presetSaturnW320',
+  [ConsolePreset.SaturnW352]: 'presetSaturnW352',
+  [ConsolePreset.SaturnW640]: 'presetSaturnW640',
+  [ConsolePreset.SaturnW704]: 'presetSaturnW704',
+  [ConsolePreset.GameBoy]: 'presetGameBoy',
+  [ConsolePreset.GameBoyPocket]: 'presetGameBoyPocket',
+  [ConsolePreset.GameBoyColor]: 'presetGameBoyColor',
+  [ConsolePreset.GameGear]: 'presetGameGear',
+  [ConsolePreset.JaguarW256]: 'presetJaguarW256',
+  [ConsolePreset.JaguarW320]: 'presetJaguarW320',
+  [ConsolePreset.Custom]: 'presetCustom'
+};

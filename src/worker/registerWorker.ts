@@ -1,9 +1,16 @@
-import { handleSignalRequest } from './handleSignalRequest';
-import type { MessagePort } from './types';
+import { toError } from '../logging/toError';
+import type { MessagePort, WorkerHandler, WorkerReply } from './types';
 
-export const registerWorker = (scope: MessagePort): void => {
+const UNKNOWN_ID = -1;
+
+export const registerWorker = (scope: MessagePort, handle: WorkerHandler): void => {
   scope.addEventListener('message', (event) => {
-    const response = handleSignalRequest(event.data);
-    scope.postMessage(response, response.ok ? [response.image.data.buffer] : []);
+    handle(event.data)
+      .then((reply: WorkerReply) => {
+        scope.postMessage(reply.message, reply.transfer);
+      })
+      .catch((error: unknown) => {
+        scope.postMessage({ id: UNKNOWN_ID, ok: false, message: toError(error).message }, []);
+      });
   });
 };

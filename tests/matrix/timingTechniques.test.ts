@@ -213,7 +213,7 @@ describe('C09 and C10 edge rise times on a PAL picture sampled four times per cy
     expect(rise).toBeLessThan((0.35 / 5e6) * 1.35);
   });
 
-  it('smears a red edge over two cascaded 1.3 MHz chroma filters on S-Video', () => {
+  it('smears a red edge over two cascaded 1.56 MHz chroma filters on S-Video', () => {
     // Arrange
     const edge = [
       [0, 0, 0],
@@ -225,8 +225,8 @@ describe('C09 and C10 edge rise times on a PAL picture sampled four times per cy
 
     // Assert
     const rise = MEASURE.riseSeconds(MEASURE.rowRedDifference(image, 1), RATE);
-    expect(rise).toBeGreaterThan(((Math.SQRT2 * 0.35) / 1.3e6) * 0.8);
-    expect(rise).toBeLessThan(((Math.SQRT2 * 0.35) / 1.3e6) * 1.2);
+    expect(rise).toBeGreaterThan(((Math.SQRT2 * 0.35) / 1.56e6) * 0.8);
+    expect(rise).toBeLessThan(((Math.SQRT2 * 0.35) / 1.56e6) * 1.2);
   });
 
   it('smears red at least as far on composite as on S-Video', () => {
@@ -259,6 +259,22 @@ describe('C11 pixel aspect ratio per console', () => {
     [ConsolePreset.MasterSystem, VideoStandard.Ntsc, 256, 8 / 7],
     [ConsolePreset.Ps1W256, VideoStandard.Ntsc, 256, 8 / 7],
     [ConsolePreset.Ps1W320, VideoStandard.Ntsc, 320, 32 / 35],
+    [ConsolePreset.Ps1W368, VideoStandard.Ntsc, 368, 4 / 5],
+    [ConsolePreset.Ps1W512, VideoStandard.Ntsc, 512, 4 / 7],
+    [ConsolePreset.Ps1W640, VideoStandard.Ntsc, 640, 16 / 35],
+    [ConsolePreset.Sg1000, VideoStandard.Ntsc, 256, 8 / 7],
+    [ConsolePreset.Sega32x, VideoStandard.Ntsc, 320, 32 / 35],
+    [ConsolePreset.Atari2600, VideoStandard.Ntsc, 160, 12 / 7],
+    [ConsolePreset.Atari7800W160, VideoStandard.Ntsc, 160, 12 / 7],
+    [ConsolePreset.Atari7800W320, VideoStandard.Ntsc, 320, 6 / 7],
+    [ConsolePreset.Atari5200W160, VideoStandard.Ntsc, 160, 12 / 7],
+    [ConsolePreset.Atari5200W320, VideoStandard.Ntsc, 320, 6 / 7],
+    [ConsolePreset.N64W320, VideoStandard.Ntsc, 320, 120 / 119],
+    [ConsolePreset.SaturnW320, VideoStandard.Ntsc, 320, 32 / 35],
+    [ConsolePreset.SaturnW352, VideoStandard.Ntsc, 352, 6 / 7],
+    [ConsolePreset.GameBoy, VideoStandard.Ntsc, 160, 1],
+    [ConsolePreset.GameGear, VideoStandard.PalBg, 160, 1],
+    [ConsolePreset.JaguarW320, VideoStandard.Ntsc, 320, 12 / 13],
     [ConsolePreset.Nes, VideoStandard.PalBg, 256, 2_950_000 / 2_128_137]
   ])(
     'gives %s on %s a pixel aspect ratio of %d wide pixels at %f',

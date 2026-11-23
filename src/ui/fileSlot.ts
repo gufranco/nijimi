@@ -1,4 +1,5 @@
 export enum FileSlot {
   Main = 'main',
-  Flicker = 'flicker'
+  Flicker = 'flicker',
+  Clip = 'clip'
 }

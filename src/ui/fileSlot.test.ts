@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { FileSlot } from './fileSlot';
 
 describe('FileSlot', () => {
-  it('names the picture and the optional flicker frame', () => {
+  it('names the picture, the optional flicker frame and a clip', () => {
     // Arrange
-    const expected = ['main', 'flicker'];
+    const expected = ['main', 'flicker', 'clip'];
 
     // Act
     const values = Object.values(FileSlot);

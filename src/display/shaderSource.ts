@@ -17,6 +17,7 @@ uniform vec2 uOutputSize;
 uniform float uGamma;
 uniform float uScanlines;
 uniform int uMask;
+uniform int uMaskPitch;
 uniform float uMaskStrength;
 uniform float uBloom;
 uniform float uCurvature;
@@ -76,7 +77,11 @@ vec3 triad(int i) {
   return i == 0 ? vec3(1.0, 0.0, 0.0) : (i == 1 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
 }
 
-vec3 maskAt(ivec2 p) {
+vec3 maskAt(ivec2 pixel) {
+  ivec2 p = pixel / max(uMaskPitch, 1);
+  if (uMask == 4) {
+    return (p.x % 3 == 2 || p.y % 3 == 2) ? vec3(0.0) : vec3(1.5);
+  }
   if (uMask == 1) {
     return triad(p.x % 3) * 3.0;
   }

@@ -39,6 +39,17 @@ describe('loadPng', () => {
     ).toEqual([8, 4, 8]);
   });
 
+  it('counts the colors and channel levels of the native picture', async () => {
+    // Arrange
+    const blob = await pngOf(64, 32);
+
+    // Act
+    const result = await loadPng({ blob, scaleOverride: 0, logger: silentLogger([]) });
+
+    // Assert
+    expect(result.ok ? result.value.stats : null).toEqual({ colors: 2, levels: 2 });
+  });
+
   it('applies a scale override that divides the image', async () => {
     // Arrange
     const blob = await pngOf(64, 32);

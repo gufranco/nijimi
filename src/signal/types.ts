@@ -1,3 +1,5 @@
+import type { CheckOutcome } from './checkOutcome';
+import type { SpecialMode } from './specialMode';
 import type { Connection } from './connection';
 import type { ConsolePreset } from './consolePreset';
 import type { FrameView } from './frameView';
@@ -113,4 +115,61 @@ export interface RowContext {
   readonly lineSwitch: number;
   readonly seed: number;
   readonly lineSeconds: number;
+}
+
+export interface ColorStats {
+  readonly colors: number;
+  readonly levels: number;
+}
+
+export interface Tier {
+  readonly limit: number;
+  readonly needs: SpecialMode | null;
+}
+
+export interface WidthRule {
+  readonly width: number;
+  readonly needs: readonly SpecialMode[];
+}
+
+export interface HeightRule {
+  readonly min: number;
+  readonly max: number;
+  readonly needs: readonly SpecialMode[];
+}
+
+export interface ConsoleCapability {
+  readonly widths: readonly WidthRule[];
+  readonly heights: Readonly<Record<'ntsc' | 'pal', readonly HeightRule[]>>;
+  readonly colors: Readonly<Record<'ntsc' | 'pal', readonly [Tier, ...Tier[]]>>;
+  readonly levels: readonly [Tier, ...Tier[]] | null;
+}
+
+export interface TierCheck {
+  readonly outcome: CheckOutcome;
+  readonly found: number;
+  readonly limit: number;
+  readonly needs: SpecialMode | null;
+}
+
+export interface ResolutionCheck {
+  readonly outcome: CheckOutcome;
+  readonly width: number;
+  readonly height: number;
+  readonly needs: readonly SpecialMode[];
+  readonly fitting: readonly ConsolePreset[];
+}
+
+export interface ConsoleReport {
+  readonly resolution: ResolutionCheck;
+  readonly colors: TierCheck;
+  readonly levels: TierCheck;
+}
+
+export interface PackedSignalImage {
+  readonly width: number;
+  readonly height: number;
+  readonly sampleAspect: number;
+  readonly frameCount: number;
+  readonly data: Uint8ClampedArray;
 }

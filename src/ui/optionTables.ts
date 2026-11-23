@@ -1,4 +1,5 @@
 import type { MessageKey } from '../i18n/types';
+import { PRESET_LABELS } from './presetLabels';
 
 export type OptionEntry =
   | { readonly value: string; readonly label: MessageKey }
@@ -12,17 +13,7 @@ export const OPTION_TABLES: Readonly<Record<string, readonly OptionEntry[]>> = {
     { value: 'pal-bg', label: 'standardPalBg' },
     { value: 'pal-m', label: 'standardPalM' }
   ],
-  p: [
-    { value: 'nes', label: 'presetNes' },
-    { value: 'snes-256', label: 'presetSnes256' },
-    { value: 'snes-512', label: 'presetSnes512' },
-    { value: 'genesis-h32', label: 'presetGenesisH32' },
-    { value: 'genesis-h40', label: 'presetGenesisH40' },
-    { value: 'sms', label: 'presetSms' },
-    { value: 'ps1-256', label: 'presetPs1W256' },
-    { value: 'ps1-320', label: 'presetPs1W320' },
-    { value: 'custom', label: 'presetCustom' }
-  ],
+  p: Object.entries(PRESET_LABELS).map(([value, label]) => ({ value, label })),
   sep: [
     { value: 'notch', label: 'separationNotch' },
     { value: 'comb1', label: 'separationComb1' },
@@ -36,7 +27,19 @@ export const OPTION_TABLES: Readonly<Record<string, readonly OptionEntry[]>> = {
     { value: 'none', label: 'maskNone' },
     { value: 'aperture-grille', label: 'maskApertureGrille' },
     { value: 'slot-mask', label: 'maskSlotMask' },
-    { value: 'shadow-mask', label: 'maskShadowMask' }
+    { value: 'shadow-mask', label: 'maskShadowMask' },
+    { value: 'lcd-grid', label: 'maskLcdGrid' }
+  ],
+  t: [
+    { value: 'custom', label: 'crtCustom' },
+    { value: 'consumer-shadow', label: 'crtConsumerShadow' },
+    { value: 'consumer-grille', label: 'crtConsumerGrille' },
+    { value: 'consumer-slot', label: 'crtConsumerSlot' },
+    { value: 'pvm', label: 'crtPvm' },
+    { value: 'bvm', label: 'crtBvm' },
+    { value: 'pc-monitor', label: 'crtPcMonitor' },
+    { value: 'arcade', label: 'crtArcade' },
+    { value: 'lcd', label: 'crtLcd' }
   ],
   view: [
     { value: 'average', label: 'frameAverage' },

@@ -1,15 +1,14 @@
 import type { Logger } from '../logging/createLogger';
+import { colorStats } from '../signal/colorStats';
+import { chooseScale } from './chooseScale';
 import { decodePng } from './decodePng';
-import { detectScale } from './detectScale';
 import { InputError } from './inputError';
+import { INPUT_LIMITS } from './inputLimits';
 import { readPngHeader } from './readPngHeader';
 import { toRgbFrame } from './toRgbFrame';
 import { verifyPng } from './verifyPng';
 import type { LoadResult, RgbaImage } from './types';
 
-const MAX_FILE_BYTES = 32 * 1024 * 1024;
-const MAX_FILE_SIDE = 4096;
-const MAX_NATIVE_SIDE = 1024;
 const HEADER_BYTES = 24;
 
 const refuse = (error: InputError, width = 0, height = 0): LoadResult => ({
@@ -18,15 +17,6 @@ const refuse = (error: InputError, width = 0, height = 0): LoadResult => ({
   width,
   height
 });
-
-const chooseScale = (
-  image: RgbaImage,
-  override: number
-): { readonly scale: number; readonly detected: number } => {
-  const detected = detectScale(image);
-  const fits = override > 0 && image.width % override === 0 && image.height % override === 0;
-  return { scale: fits ? override : detected, detected };
-};
 
 const decodeOrNull = async (blob: Blob, logger: Logger): Promise<RgbaImage | null> => {
   const problem = await verifyPng(new Uint8Array(await blob.arrayBuffer()));
@@ -53,7 +43,7 @@ export const loadPng = async (input: {
   readonly scaleOverride: number;
   readonly logger: Logger;
 }): Promise<LoadResult> => {
-  if (input.blob.size > MAX_FILE_BYTES) {
+  if (input.blob.size > INPUT_LIMITS.maxFileBytes) {
     return refuse(InputError.FileTooBig);
   }
   const header = readPngHeader(
@@ -62,7 +52,7 @@ export const loadPng = async (input: {
   if (header === null) {
     return refuse(InputError.NotPng);
   }
-  if (header.width > MAX_FILE_SIDE || header.height > MAX_FILE_SIDE) {
+  if (header.width > INPUT_LIMITS.maxFileSide || header.height > INPUT_LIMITS.maxFileSide) {
     return refuse(InputError.TooLarge, header.width, header.height);
   }
   const image = await decodeOrNull(input.blob, input.logger);
@@ -70,8 +60,15 @@ export const loadPng = async (input: {
     return refuse(InputError.Corrupt, header.width, header.height);
   }
   const { scale, detected } = chooseScale(image, input.scaleOverride);
-  if (image.width / scale > MAX_NATIVE_SIDE || image.height / scale > MAX_NATIVE_SIDE) {
+  if (
+    image.width / scale > INPUT_LIMITS.maxNativeSide ||
+    image.height / scale > INPUT_LIMITS.maxNativeSide
+  ) {
     return refuse(InputError.TooLarge, image.width / scale, image.height / scale);
   }
-  return { ok: true, value: { frame: toRgbFrame(image, scale), scale, detectedScale: detected } };
+  const frame = toRgbFrame(image, scale);
+  return {
+    ok: true,
+    value: { frame, scale, detectedScale: detected, stats: colorStats(frame) }
+  };
 };

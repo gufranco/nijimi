@@ -5,6 +5,7 @@ import { PalDecoding } from '../signal/palDecoding';
 import { ScanMode } from '../signal/scanMode';
 import { Separation } from '../signal/separation';
 import { VideoStandard } from '../signal/videoStandard';
+import { CrtModel } from './crtModel';
 import { MaskKind } from './maskKind';
 import type { AppSettings } from './types';
 
@@ -26,9 +27,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     seed: 1
   },
   display: {
+    crt: CrtModel.Custom,
     scanlines: 0.6,
     mask: MaskKind.ApertureGrille,
     maskStrength: 0.35,
+    maskPitch: 1,
     bloom: 0.25,
     curvature: 0.15,
     overscan: false

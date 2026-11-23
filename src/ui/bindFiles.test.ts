@@ -86,13 +86,18 @@ describe('bindFiles', () => {
       event.preventDefault();
       opened.splice(opened.length, 0, 'flicker');
     });
+    elements.clipInput.addEventListener('click', (event) => {
+      event.preventDefault();
+      opened.splice(opened.length, 0, 'clip');
+    });
 
     // Act
     elements.chooseButton.click();
     elements.flickerButton.click();
+    elements.clipButton.click();
 
     // Assert
-    expect(opened).toEqual(['main', 'flicker']);
+    expect(opened).toEqual(['main', 'flicker', 'clip']);
     root.remove();
   });
 
@@ -142,6 +147,23 @@ describe('bindFiles', () => {
 
     // Assert
     expect(received).toEqual([`${FileSlot.Main}:paste.png`]);
+    root.remove();
+  });
+
+  it('hands a dropped or pasted video or GIF to the clip slot', () => {
+    // Arrange
+    const { root, elements, received } = setup();
+    const webm = new File([new Uint8Array([0x1a, 0x45])], 'drop.webm', { type: 'video/webm' });
+    const gif = new File([new Uint8Array([0x47, 0x49])], 'paste.gif', { type: 'image/gif' });
+
+    // Act
+    elements.screen.dispatchEvent(
+      new DragEvent('drop', { dataTransfer: transfer(webm), cancelable: true })
+    );
+    document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer(gif) }));
+
+    // Assert
+    expect(received).toEqual([`${FileSlot.Clip}:drop.webm`, `${FileSlot.Clip}:paste.gif`]);
     root.remove();
   });
 });

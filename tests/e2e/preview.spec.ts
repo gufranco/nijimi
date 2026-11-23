@@ -73,7 +73,9 @@ test('renders a pasted PNG', async ({ page }) => {
   await page.evaluate((data: number[]) => {
     const transfer = new DataTransfer();
     transfer.items.add(new File([new Uint8Array(data)], 'paste.png', { type: 'image/png' }));
-    document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer }));
+    const paste = new ClipboardEvent('paste');
+    Object.defineProperty(paste, 'clipboardData', { value: transfer });
+    document.dispatchEvent(paste);
   }, bytes);
 
   // Assert
@@ -195,18 +197,73 @@ test('falls back to defaults and names an invalid link value', async ({ page }) 
   expect(problems).toEqual([]);
 });
 
-test('shows the original over the CRT and zooms the screen', async ({ page }) => {
+test('shows the original over the CRT', async ({ page }) => {
   // Arrange
   const problems = await openPage(page);
   await loadArt(page);
 
   // Act
   await page.getByLabel('Compare with the original').check();
-  await page.locator('input[name=zoom][value="2"]').check({ force: true });
 
   // Assert
   await expect(page.locator('#source-canvas')).toBeVisible();
-  await expect(page.locator('#canvas-wrap')).toHaveAttribute('data-zoom', '2');
+  expect(problems).toEqual([]);
+});
+
+test('zooms in where the right button clicks and pans with a left drag', async ({ page }) => {
+  // Arrange
+  const problems = await openPage(page);
+  await loadArt(page);
+  const box = await page.locator('#screen').boundingBox();
+  const centre = {
+    x: (box?.x ?? 0) + (box?.width ?? 0) / 2,
+    y: (box?.y ?? 0) + (box?.height ?? 0) / 2
+  };
+  await page.mouse.click(centre.x, centre.y, { button: 'right' });
+  const zoomed = await page.locator('#canvas-wrap').evaluate((element) => element.style.transform);
+
+  // Act
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 40, centre.y + 20, { steps: 4 });
+  await page.mouse.up();
+
+  // Assert
+  await expect(page.locator('#zoom-readout')).toHaveText('2.0x');
+  expect(
+    await page.locator('#canvas-wrap').evaluate((element) => element.style.transform)
+  ).not.toBe(zoomed);
+  expect(problems).toEqual([]);
+});
+
+test('zooms with the wheel and resets with a double click', async ({ page }) => {
+  // Arrange
+  const problems = await openPage(page);
+  await loadArt(page);
+  await page.locator('#screen').hover();
+  await page.mouse.wheel(0, -400);
+  await expect(page.locator('#zoom-readout')).not.toHaveText('1.0x');
+
+  // Act
+  await page.locator('#screen').dblclick();
+
+  // Assert
+  await expect(page.locator('#zoom-readout')).toHaveText('1.0x');
+  expect(problems).toEqual([]);
+});
+
+test('zooms and pans from the keyboard', async ({ page }) => {
+  // Arrange
+  const problems = await openPage(page);
+  await loadArt(page);
+  await page.locator('#screen').focus();
+
+  // Act
+  await page.keyboard.press('+');
+  await page.keyboard.press('ArrowRight');
+
+  // Assert
+  await expect(page.locator('#zoom-readout')).toHaveText('1.5x');
   expect(problems).toEqual([]);
 });
 

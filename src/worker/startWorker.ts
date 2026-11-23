@@ -1,4 +1,5 @@
 import { registerWorker } from './registerWorker';
+import type { WorkerHandler } from './types';
 import { workerPort } from './workerPort';
 
 interface CandidateScope {
@@ -6,10 +7,10 @@ interface CandidateScope {
   readonly postMessage: (message: unknown, options: StructuredSerializeOptions) => void;
 }
 
-export const startWorker = (scope: CandidateScope): boolean => {
+export const startWorker = (scope: CandidateScope, handle: WorkerHandler): boolean => {
   if (!('WorkerGlobalScope' in scope)) {
     return false;
   }
-  registerWorker(workerPort(scope));
+  registerWorker(workerPort(scope), handle);
   return true;
 };
