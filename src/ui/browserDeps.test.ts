@@ -135,6 +135,7 @@ describe('browserDeps', () => {
 
     // Assert
     expect(ticks).toEqual([]);
+    expect(Math.abs(deps.scheduler.now() - performance.now())).toBeLessThan(1000);
   });
 
   it('offers the image decoder, a recording type and a timer', async () => {
@@ -147,15 +148,21 @@ describe('browserDeps', () => {
 
     // Assert
     expect(deps.imageDecoder).toBe(window.ImageDecoder);
-    expect(deps.recordingType).toBe(
+    expect([deps.recordingType(false), deps.recordingType(true)]).toEqual([
       ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((type) =>
         MediaRecorder.isTypeSupported(type)
-      )
-    );
+      ),
+      [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+        'video/webm;codecs=vp9,opus',
+        'video/webm'
+      ].find((type) => MediaRecorder.isTypeSupported(type))
+    ]);
     expect(performance.now() - started).toBeGreaterThanOrEqual(19);
   });
 
-  it('stores clip frames in the private file system and sizes the worker pool from the cores', async () => {
+  it('stores clip frames in the private file system and uses half the cores for workers, at most 8', async () => {
     // Arrange
     const deps = depsFor();
     const store = await deps.openStore();
@@ -167,7 +174,9 @@ describe('browserDeps', () => {
 
     // Assert
     expect([...(await reader.read(0))]).toEqual([5, 6]);
-    expect(deps.workerCount).toBe(Math.max(1, Math.min(navigator.hardwareConcurrency - 1, 8)));
+    expect(deps.workerCount).toBe(
+      Math.max(1, Math.min(Math.floor(navigator.hardwareConcurrency / 2), 8))
+    );
     expect(worker).toBeInstanceOf(Worker);
     if (worker instanceof Worker) {
       worker.terminate();

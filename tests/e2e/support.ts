@@ -21,7 +21,7 @@ const BROWSER_DIAGNOSTICS = [
 const isBrowserDiagnostic = (text: string): boolean =>
   BROWSER_DIAGNOSTICS.some((pattern) => pattern.test(text));
 
-const RENDER_WAIT_MS = 30_000;
+export const RENDER_WAIT_MS = 30_000;
 
 export const openPage = async (page: Page, path = './'): Promise<string[]> => {
   const problems: string[] = [];

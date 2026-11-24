@@ -1,5 +1,6 @@
 import type { Logger } from '../logging/createLogger';
 import { grabFrame } from './grabFrame';
+import { hasAudio } from './hasAudio';
 import type { ClipSource, VisitFrame } from './types';
 import { waitForEvent } from './waitForEvent';
 
@@ -77,6 +78,7 @@ export const openVideoClip = async (input: {
   });
   return {
     lossy: true,
+    hasAudio: () => hasAudio(video),
     each: playFrames(video),
     close: () => {
       release(video, url);

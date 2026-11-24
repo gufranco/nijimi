@@ -2,6 +2,7 @@ import type { ClipSource } from './types';
 
 export const firstFrameOnly = (source: ClipSource): ClipSource => ({
   lossy: source.lossy,
+  hasAudio: source.hasAudio,
   each: (visit) =>
     source.each(async (frame, seconds) => {
       await visit(frame, seconds);

@@ -10,7 +10,9 @@ import { simulateSignal } from '../signal/simulateSignal';
 import type { RgbFrame, SignalImage, SignalSettings } from '../signal/types';
 import { createClipStage } from './createClipStage';
 import type { ClipStage } from './createClipStage';
-import type { Scheduler } from './createClipPlayer';
+import type { ClipAudio } from './clipClock';
+import type { PlayerState, Scheduler } from './createClipPlayer';
+import { createWallClock } from './createWallClock';
 
 type Render = (
   frames: readonly [RgbFrame, ...RgbFrame[]],
@@ -33,7 +35,8 @@ const clipOf = async (): Promise<LoadedClip> => {
     },
     frames: await store.seal(8 * 2 * 4),
     times: [0, 0.02],
-    duration: 0.04
+    duration: 0.04,
+    audio: false
   };
 };
 
@@ -47,6 +50,7 @@ interface Harness {
   readonly discarded: string[];
   readonly source: HTMLCanvasElement;
   readonly pending: () => number;
+  readonly states: PlayerState[];
 }
 
 const harness = (
@@ -54,12 +58,14 @@ const harness = (
     readonly render?: Render;
     readonly onLastField?: (stage: ClipStage) => void;
     readonly failReads?: boolean;
+    readonly audio?: ClipAudio;
   } = {}
 ): Harness => {
   const events: string[] = [];
   const drawnBloom: number[] = [];
   const renders: number[] = [];
   const discarded: string[] = [];
+  const states: PlayerState[] = [];
   const source = document.createElement('canvas');
   const real = createDisplay(document.createElement('canvas'));
   const display: Display = {
@@ -71,6 +77,7 @@ const harness = (
   };
   let ticks = 0;
   const scheduler: Scheduler = {
+    now: () => 0,
     request: () => {
       ticks += 1;
       return ticks;
@@ -111,6 +118,13 @@ const harness = (
     ],
     openStore,
     fieldRate: () => 50,
+    createAudio: () => {
+      if (options.audio === undefined) {
+        throw new Error('this clip has no sound');
+      }
+      return options.audio;
+    },
+    onState: (state) => states.splice(states.length, 0, state),
     display,
     sourceCanvas: source,
     scheduler,
@@ -123,7 +137,7 @@ const harness = (
     },
     onError: (error) => events.splice(events.length, 0, `error ${error.message}`)
   });
-  return { stage, events, drawnBloom, renders, discarded, source, pending: () => ticks };
+  return { stage, events, drawnBloom, renders, discarded, source, pending: () => ticks, states };
 };
 
 describe('createClipStage', () => {
@@ -133,7 +147,7 @@ describe('createClipStage', () => {
     const clip = await clipOf();
 
     // Act
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
 
     // Assert
     expect(events).toEqual(['busy', '1/2', '2/2', 'idle']);
@@ -146,11 +160,11 @@ describe('createClipStage', () => {
     // Arrange
     const { stage, drawnBloom, renders } = harness();
     const clip = await clipOf();
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
     const brighter = { ...DEFAULT_SETTINGS, display: { ...DEFAULT_SETTINGS.display, bloom: 0.9 } };
 
     // Act
-    await stage.show({ clip, clipVersion: 1, settings: brighter });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: brighter });
 
     // Assert
     expect(renders).toHaveLength(2);
@@ -161,9 +175,10 @@ describe('createClipStage', () => {
     // Arrange
     const { stage, events, discarded } = harness();
     const clip = await clipOf();
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
     const first = stage.show({
       clip,
+      blob: new Blob([]),
       clipVersion: 1,
       settings: { ...DEFAULT_SETTINGS, signal: { ...DEFAULT_SETTINGS.signal, saturation: 1.5 } }
     });
@@ -171,6 +186,7 @@ describe('createClipStage', () => {
     // Act
     const second = stage.show({
       clip,
+      blob: new Blob([]),
       clipVersion: 1,
       settings: { ...DEFAULT_SETTINGS, signal: { ...DEFAULT_SETTINGS.signal, saturation: 0.5 } }
     });
@@ -197,7 +213,7 @@ describe('createClipStage', () => {
     const clip = await clipOf();
 
     // Act
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
 
     // Assert
     expect(discarded).toEqual(['2 fields']);
@@ -212,7 +228,7 @@ describe('createClipStage', () => {
     const clip = await clipOf();
 
     // Act
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
 
     // Assert
     expect(events).toEqual(['busy', 'idle', 'error worker crashed']);
@@ -226,7 +242,7 @@ describe('createClipStage', () => {
     const clip = await clipOf();
 
     // Act
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
 
     // Assert
     expect(events).toEqual(['busy', '1/2', '2/2', 'idle', 'error read failed']);
@@ -237,7 +253,7 @@ describe('createClipStage', () => {
     const { stage, drawnBloom, pending } = harness();
     const clip = await clipOf();
     await stage.rewind();
-    await stage.show({ clip, clipVersion: 1, settings: DEFAULT_SETTINGS });
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
 
     // Act
     await stage.rewind();
@@ -246,5 +262,70 @@ describe('createClipStage', () => {
     // Assert
     expect(drawnBloom).toHaveLength(2);
     expect(pending()).toBe(0);
+  });
+
+  it('passes transport commands to the playing clip and ignores them with none', async () => {
+    // Arrange
+    const { stage, states } = harness();
+    await Promise.all([
+      stage.play(),
+      stage.pause(),
+      stage.toggle(),
+      stage.step(1),
+      stage.jump(1),
+      stage.restart()
+    ]);
+    const clip = await clipOf();
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
+
+    // Act
+    await stage.pause();
+    await stage.step(1);
+    await stage.jump(-0.02);
+    await stage.toggle();
+    await stage.play();
+    await stage.restart();
+
+    // Assert
+    expect(states.map((state) => [state.field, state.playing])).toEqual([
+      [0, true],
+      [0, false],
+      [1, false],
+      [0, false],
+      [0, true],
+      [0, true],
+      [0, true],
+      [0, true]
+    ]);
+    expect(stage.audioStream()).toBeNull();
+  });
+
+  it('plays a clip with sound on its audio clock, offers its stream and closes it on stop', async () => {
+    // Arrange
+    const closed: string[] = [];
+    const stream = new MediaStream();
+    const audio: ClipAudio = {
+      ...createWallClock(() => 0),
+      stream: () => stream,
+      close: () => {
+        closed.splice(closed.length, 0, 'closed');
+        return Promise.reject(new Error('context already closed'));
+      }
+    };
+    const { stage, events } = harness({ audio });
+    const clip = { ...(await clipOf()), audio: true };
+    await stage.show({ clip, blob: new Blob([]), clipVersion: 1, settings: DEFAULT_SETTINGS });
+
+    // Act
+    const offered = stage.audioStream();
+    stage.stop();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Assert
+    expect([offered, closed, events.at(-1)]).toEqual([
+      stream,
+      ['closed'],
+      'error context already closed'
+    ]);
   });
 });

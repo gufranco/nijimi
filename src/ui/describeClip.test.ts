@@ -15,7 +15,8 @@ const CLIP: LoadedClip = {
   },
   frames: await createMemoryStore().seal(4),
   times: [0, 0.02, 0.04],
-  duration: 0.06
+  duration: 0.06,
+  audio: false
 };
 
 describe('describeClip', () => {

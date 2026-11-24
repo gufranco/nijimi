@@ -55,6 +55,7 @@ const fakeClip = (frames: readonly RgbaImage[]): FakeClip => {
     closed,
     source: {
       lossy: false,
+      hasAudio: () => false,
       each: async (visit) => {
         const frame = frames[Math.min(call, frames.length - 1)] ?? solid(1, 1);
         call += 1;

@@ -56,19 +56,23 @@ export const browserDeps = (win: Window & typeof globalThis): AppDeps => {
       download(win.document, blob, name);
     },
     scheduler: {
+      now: () => win.performance.now(),
       request: (tick) => win.requestAnimationFrame(tick),
       cancel: (handle) => {
         win.cancelAnimationFrame(handle);
       }
     },
     imageDecoder: win.ImageDecoder,
-    recordingType: pickRecordingType(win.MediaRecorder),
+    recordingType: (audio) => pickRecordingType(win.MediaRecorder, audio),
     wait: (ms) =>
       new Promise((resolve) => {
         win.setTimeout(resolve, ms);
       }),
     openStore: async () => openFrameStore({ clips: await clips, name: win.crypto.randomUUID() }),
     createWorker: signalWorker,
-    workerCount: Math.max(1, Math.min(win.navigator.hardwareConcurrency - 1, MAX_WORKERS))
+    workerCount: Math.max(
+      1,
+      Math.min(Math.floor(win.navigator.hardwareConcurrency / 2), MAX_WORKERS)
+    )
   };
 };

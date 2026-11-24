@@ -39,6 +39,17 @@ const CONFIRM_DIALOG = `
   </form>
 </dialog>`;
 
+const deckButton = (id: string, icon: string, label: string): string => `
+      <button type="button" class="vcr-button" id="vcr-${id}" data-icon="${icon}" data-i18n-label="${label}" disabled></button>`;
+
+const VCR_DECK = `
+        <div class="vcr-deck" id="vcr-deck" role="group" data-i18n-label="deckLabel">
+          <div class="vcr-slot" aria-hidden="true"><span class="vcr-flap"></span></div>
+          <output class="vcr-counter" id="vcr-counter">-:--:--</output>
+          <div class="vcr-buttons">${deckButton('stop', 'stop', 'deckStop')}${deckButton('rewind', 'rewind', 'deckRewind')}${deckButton('back', 'back', 'deckBack')}${deckButton('play', 'play', 'deckPlay')}${deckButton('forward', 'forward', 'deckForward')}${deckButton('fast-forward', 'fast-forward', 'deckFastForward')}
+          </div>
+        </div>`;
+
 const CONNECTIONS = [
   ['rf', 'connectionRf'],
   ['composite', 'connectionComposite'],
@@ -91,7 +102,7 @@ export const SHELL_HTML = `
           <span class="knob"></span>
           <span class="knob knob-small"></span>
           <span class="grille"></span>
-        </div>
+        </div>${VCR_DECK}
       </div>
       <div class="tv-feet" aria-hidden="true"><span></span><span></span></div>
     </div>

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { create2dDisplay } from '../display/create2dDisplay';
 import { createDisplay } from '../display/createDisplay';
 import { encodeGif } from '../../tests/fixtures/encodeGif';
+import { recordWebm } from '../../tests/fixtures/recordWebm';
 import { createMemoryStore } from '../clip/createMemoryStore';
 import type { FrameStore } from '../clip/types';
 import { createLogger } from '../logging/createLogger';
@@ -89,6 +90,7 @@ interface Booted {
 }
 
 const SCHEDULER: AppDeps['scheduler'] = {
+  now: () => performance.now(),
   request: (tick) => requestAnimationFrame(tick),
   cancel: (handle) => {
     cancelAnimationFrame(handle);
@@ -124,7 +126,7 @@ const boot = (overrides: Partial<AppDeps> = {}): Booted => {
     download: (blob, name) => downloads.splice(downloads.length, 0, `${name}:${blob.type}`),
     scheduler: SCHEDULER,
     imageDecoder: ImageDecoder,
-    recordingType: 'video/webm',
+    recordingType: () => 'video/webm',
     wait,
     openStore: () => Promise.resolve(createMemoryStore()),
     createWorker: () => {
@@ -620,7 +622,7 @@ describe('startApp', () => {
       download: () => undefined,
       scheduler: SCHEDULER,
       imageDecoder: undefined,
-      recordingType: null,
+      recordingType: () => null,
       wait,
       openStore: () => Promise.resolve(createMemoryStore()),
       createWorker: () => Object.assign(new EventTarget(), { postMessage: () => undefined }),
@@ -665,7 +667,7 @@ describe('startApp', () => {
 
   it('reports a video export the recorder refuses', async () => {
     // Arrange
-    const page = boot({ hash: '#p=genesis-h40', recordingType: 'video/x-none' });
+    const page = boot({ hash: '#p=genesis-h40', recordingType: () => 'video/x-none' });
     await page.pick(gifFile(10), '#clip-input');
 
     // Act
@@ -693,7 +695,7 @@ describe('startApp', () => {
 
   it('hides the video export and records nothing when the browser cannot record', async () => {
     // Arrange
-    const page = boot({ recordingType: null });
+    const page = boot({ recordingType: () => null });
     await page.pick(gifFile(10), '#clip-input');
 
     // Act
@@ -943,5 +945,52 @@ describe('startApp', () => {
     expect(page.query('#notice', HTMLElement).textContent).toBe(
       'This browser cannot decode this clip. Use WebM, MP4, GIF or animated PNG.'
     );
+  });
+
+  it('drives a clip from the deck on the TV', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+    const idleDisabled = page.query('#vcr-play', HTMLButtonElement).disabled;
+    await page.pick(gifFile(10), '#clip-input');
+    const play = page.query('#vcr-play', HTMLButtonElement);
+    const playingLabel = play.getAttribute('aria-label');
+
+    // Act
+    play.click();
+    await page.app.idle();
+    const pausedLabel = play.getAttribute('aria-label');
+    page.query('#vcr-forward', HTMLButtonElement).click();
+    page.query('#vcr-fast-forward', HTMLButtonElement).click();
+    page.query('#vcr-back', HTMLButtonElement).click();
+    page.query('#vcr-rewind', HTMLButtonElement).click();
+    await page.app.idle();
+    page.query('#vcr-stop', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect([idleDisabled, playingLabel, pausedLabel]).toEqual([true, 'Pause', 'Play']);
+    expect(page.query('#vcr-counter', HTMLOutputElement).textContent).toBe('0:00:00');
+    expect(page.query('#vcr-deck', HTMLElement).hasAttribute('data-loaded')).toBe(true);
+  });
+
+  it('plays a clip with sound and keeps the sound for the video export', async () => {
+    // Arrange
+    const page = boot({ hash: '#p=genesis-h40' });
+    const blob = await recordWebm({
+      width: 8,
+      height: 8,
+      colors: ['#ff0000', '#00ff00', '#0000ff'],
+      frameMs: 120,
+      audio: true
+    });
+
+    // Act
+    await page.pick(new File([blob], 'loud.webm', { type: 'video/webm' }), '#clip-input');
+    page.query('#export-video-button', HTMLButtonElement).click();
+    await page.app.idle();
+
+    // Assert
+    expect(page.downloads).toEqual(['nijimi-crt.webm:video/webm']);
+    expect(page.errors).toEqual([]);
   });
 });

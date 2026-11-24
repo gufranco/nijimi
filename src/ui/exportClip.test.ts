@@ -14,7 +14,8 @@ const CLIP: LoadedClip = {
   },
   frames: await createMemoryStore().seal(4),
   times: [0],
-  duration: 0.2
+  duration: 0.2,
+  audio: false
 };
 
 describe('exportClip', () => {
@@ -40,11 +41,13 @@ describe('exportClip', () => {
       },
       download: (blob, file) => downloads.splice(downloads.length, 0, `${file}:${blob.type}`),
       scheduler: {
+        now: () => performance.now(),
         request: (tick) => requestAnimationFrame(tick),
         cancel: (handle) => {
           cancelAnimationFrame(handle);
         }
       },
+      audio: null,
       onStart: () => {
         waited.splice(waited.length, 0, 0);
         return Promise.resolve();

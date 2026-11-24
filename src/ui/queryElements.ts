@@ -56,6 +56,14 @@ export interface Elements {
   readonly confirmInfo: HTMLElement;
   readonly confirmCheck: HTMLElement;
   readonly confirmCancel: HTMLButtonElement;
+  readonly vcrDeck: HTMLElement;
+  readonly vcrCounter: HTMLOutputElement;
+  readonly vcrStop: HTMLButtonElement;
+  readonly vcrRewind: HTMLButtonElement;
+  readonly vcrBack: HTMLButtonElement;
+  readonly vcrPlay: HTMLButtonElement;
+  readonly vcrForward: HTMLButtonElement;
+  readonly vcrFastForward: HTMLButtonElement;
 }
 
 export const queryElements = (root: ParentNode): Elements => ({
@@ -105,5 +113,13 @@ export const queryElements = (root: ParentNode): Elements => ({
   confirmCanvas: byId(root, 'confirm-canvas', HTMLCanvasElement),
   confirmInfo: byId(root, 'confirm-info', HTMLElement),
   confirmCheck: byId(root, 'confirm-check', HTMLElement),
-  confirmCancel: byId(root, 'confirm-cancel', HTMLButtonElement)
+  confirmCancel: byId(root, 'confirm-cancel', HTMLButtonElement),
+  vcrDeck: byId(root, 'vcr-deck', HTMLElement),
+  vcrCounter: byId(root, 'vcr-counter', HTMLOutputElement),
+  vcrStop: byId(root, 'vcr-stop', HTMLButtonElement),
+  vcrRewind: byId(root, 'vcr-rewind', HTMLButtonElement),
+  vcrBack: byId(root, 'vcr-back', HTMLButtonElement),
+  vcrPlay: byId(root, 'vcr-play', HTMLButtonElement),
+  vcrForward: byId(root, 'vcr-forward', HTMLButtonElement),
+  vcrFastForward: byId(root, 'vcr-fast-forward', HTMLButtonElement)
 });

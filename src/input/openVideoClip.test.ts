@@ -119,4 +119,21 @@ describe('openVideoClip', () => {
     ]);
     expect(document.querySelectorAll('video.clip-decoder')).toHaveLength(0);
   });
+
+  it('tells whether the clip it played through has sound', async () => {
+    // Arrange
+    const silent = await open(
+      await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 })
+    );
+    const loud = await open(
+      await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120, audio: true })
+    );
+
+    // Act
+    await silent.each(() => Promise.resolve(true));
+    await loud.each(() => Promise.resolve(true));
+
+    // Assert
+    expect([silent.hasAudio(), loud.hasAudio()]).toEqual([false, true]);
+  });
 });

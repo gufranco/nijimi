@@ -40,6 +40,7 @@ export default defineConfig({
             enabled: true,
             headless: true,
             provider: playwright({
+              launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
               contextOptions: { permissions: ['clipboard-read', 'clipboard-write'] }
             }),
             instances: [{ browser: 'chromium' }]

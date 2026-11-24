@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -7,7 +8,7 @@ import { encodeGif } from '../fixtures/encodeGif';
 import { encodeApng } from './fixtures/encodePng';
 import { recordClip } from './fixtures/recordClip';
 import { recordSmsClip } from './fixtures/recordSmsClip';
-import { confirmRender, openPage, waitForRender } from './support';
+import { confirmRender, openPage, RENDER_WAIT_MS, waitForRender } from './support';
 
 const GENESIS = './#p=genesis-h40';
 
@@ -75,7 +76,9 @@ test('plays an animated GIF at the console field rate', async ({ page }) => {
   await pickClip(page, { name: 'walk.gif', mimeType: 'image/gif', buffer: GIF });
 
   // Assert
-  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz');
+  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz', {
+    timeout: RENDER_WAIT_MS
+  });
   await waitForRender(page);
   await expect(page.locator('#export-video-button')).toBeVisible({
     visible: await canRecord(page)
@@ -91,7 +94,9 @@ test('keeps every field of a clip longer than five seconds', async ({ page }) =>
   await pickClip(page, { name: 'long.gif', mimeType: 'image/gif', buffer: LONG_GIF });
 
   // Assert
-  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 479 fields at 59.92 Hz');
+  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 479 fields at 59.92 Hz', {
+    timeout: RENDER_WAIT_MS
+  });
   await waitForRender(page);
   await expect(page.locator('#notice')).toHaveText('');
   expect(problems).toEqual([]);
@@ -105,7 +110,9 @@ test('plays an animated PNG', async ({ page }) => {
   await pickClip(page, { name: 'walk.png', mimeType: 'image/png', buffer: APNG });
 
   // Assert
-  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz');
+  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz', {
+    timeout: RENDER_WAIT_MS
+  });
   await waitForRender(page);
   expect(problems).toEqual([]);
 });
@@ -126,7 +133,8 @@ test('plays a dropped WebM video', async ({ page }) => {
 
   // Assert
   await expect(page.locator('#source-info')).toHaveText(
-    /^4 x 2 native, Detected 8x scale, \d+ fields at 59\.92 Hz$/
+    /^4 x 2 native, Detected 8x scale, \d+ fields at 59\.92 Hz$/,
+    { timeout: RENDER_WAIT_MS }
   );
   await waitForRender(page);
   expect(problems).toEqual([]);
@@ -142,7 +150,8 @@ test('decodes an MP4 video, whose lossy blocks may or may not read as 8x', async
 
   // Assert
   await expect(page.locator('#source-info')).toHaveText(
-    /^(32 x 16 native|4 x 2 native, Detected 8x scale), \d+ fields at 59\.92 Hz$/
+    /^(32 x 16 native|4 x 2 native, Detected 8x scale), \d+ fields at 59\.92 Hz$/,
+    { timeout: RENDER_WAIT_MS }
   );
   await waitForRender(page);
   expect(problems).toEqual([]);
@@ -195,7 +204,9 @@ test('exports one loop of a clip whose first frame shows the picture, as MP4 whe
   // Arrange
   const problems = await openPage(page, GENESIS);
   await pickClip(page, { name: 'walk.gif', mimeType: 'image/gif', buffer: GIF });
-  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz');
+  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz', {
+    timeout: RENDER_WAIT_MS
+  });
   await waitForRender(page);
   const recordable = await canRecord(page);
   const extension = recordable ? await recordedExtension(page) : null;
@@ -222,7 +233,8 @@ test('checks a compressed Master System video against the console palette, not i
 
   // Assert
   await expect(page.locator('#source-info')).toHaveText(
-    /^256 x 192 native, Detected 3x scale, \d+ fields at 59\.92 Hz$/
+    /^256 x 192 native, Detected 3x scale, \d+ fields at 59\.92 Hz$/,
+    { timeout: RENDER_WAIT_MS }
   );
   await expect(page.locator('#console-check-list li').first()).toHaveText(
     '256x192: a native resolution of this preset.'
@@ -233,6 +245,83 @@ test('checks a compressed Master System video against the console palette, not i
   await expect(page.locator('#console-check-list li').last()).toHaveText(
     "Measured on a compressed video, after snapping each color to this console's palette."
   );
+  expect(problems).toEqual([]);
+});
+
+test('drives a clip from the VCR deck on the TV, with no accessibility violations', async ({
+  page
+}) => {
+  // Arrange
+  const problems = await openPage(page, GENESIS);
+  await pickClip(page, { name: 'walk.gif', mimeType: 'image/gif', buffer: GIF });
+  await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz', {
+    timeout: RENDER_WAIT_MS
+  });
+  await waitForRender(page);
+  const deck = page.getByRole('group', { name: 'Video deck' });
+
+  // Act
+  await deck.getByRole('button', { name: 'Pause' }).click();
+  await deck.getByRole('button', { name: 'One field forward' }).click();
+  await deck.getByRole('button', { name: 'Stop and rewind to the start' }).click();
+
+  // Assert
+  await expect(deck.getByRole('button', { name: 'Play' })).toBeVisible();
+  await expect(page.locator('#vcr-counter')).toHaveText('0:00:00');
+  const sizes = await deck
+    .getByRole('button')
+    .evaluateAll((buttons) =>
+      buttons.map((button) =>
+        Math.min(button.getBoundingClientRect().width, button.getBoundingClientRect().height)
+      )
+    );
+  expect(sizes.every((size) => size >= 44)).toBe(true);
+  expect((await new AxeBuilder({ page }).include('#vcr-deck').analyze()).violations).toEqual([]);
+  expect(problems).toEqual([]);
+});
+
+test('keeps the clip sound in the exported video where the browser can record', async ({
+  page
+}) => {
+  // Arrange
+  const problems = await openPage(page, GENESIS);
+  const webm = await recordClip('video/webm', true);
+  await pickClip(page, { name: 'loud.webm', mimeType: 'video/webm', buffer: webm });
+  await expect(page.locator('#source-info')).toHaveText(/fields at 59\.92 Hz$/, {
+    timeout: RENDER_WAIT_MS
+  });
+  await waitForRender(page);
+  const recordable = await canRecord(page);
+
+  // Act
+  const download = recordable ? page.waitForEvent('download') : null;
+  if (recordable) {
+    await page.getByRole('button', { name: 'Export video' }).click();
+  }
+  const file = await download;
+
+  // Assert
+  const bytes = file === null ? [] : Array.from(await readFile(await file.path()));
+  const withSound =
+    bytes.length === 0
+      ? null
+      : await page.evaluate(async (data: number[]) => {
+          const video = document.createElement('video');
+          video.muted = true;
+          video.src = URL.createObjectURL(new Blob([new Uint8Array(data)]));
+          document.body.append(video);
+          await video.play();
+          await new Promise((resolve) => {
+            video.addEventListener('ended', resolve, { once: true });
+          });
+          const tracks = Reflect.get(video, 'audioTracks') as { length?: number } | undefined;
+          return (
+            Number(Reflect.get(video, 'webkitAudioDecodedByteCount') ?? 0) > 0 ||
+            Reflect.get(video, 'mozHasAudio') === true ||
+            (tracks?.length ?? 0) > 0
+          );
+        }, bytes);
+  expect(withSound).toBe(recordable ? true : null);
   expect(problems).toEqual([]);
 });
 

@@ -17,14 +17,17 @@ export const exportClip = async (input: {
   readonly download: (blob: Blob, name: string) => void;
   readonly onStart: () => Promise<void>;
   readonly scheduler: Scheduler;
+  readonly audio: MediaStream | null;
 }): Promise<void> => {
   const blob = await recordCanvas({
     canvas: input.canvas,
     mimeType: input.mimeType,
+    fps: input.fieldRate,
     seconds: fieldCount(input.clip.duration, input.fieldRate) / input.fieldRate,
     wait: input.wait,
     onStart: input.onStart,
-    scheduler: input.scheduler
+    scheduler: input.scheduler,
+    audio: input.audio
   });
   input.download(blob, `${VIDEO_NAME}.${extensionOf(input.mimeType)}`);
 };

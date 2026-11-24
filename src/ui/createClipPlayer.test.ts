@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Clock } from './clipClock';
 import { createClipPlayer } from './createClipPlayer';
-import type { Scheduler } from './createClipPlayer';
+import type { PlayerState, Scheduler } from './createClipPlayer';
+import { createWallClock } from './createWallClock';
 
 const manualScheduler = (): Scheduler & {
-  readonly fire: (now: number) => void;
+  readonly fire: () => void;
+  readonly advance: (ms: number) => void;
   readonly pending: () => number;
-  readonly cancelled: number[];
 } => {
   let ticks: readonly { readonly handle: number; readonly tick: (now: number) => void }[] = [];
   let next = 1;
-  const cancelled: number[] = [];
+  let time = 0;
   return {
+    now: () => time,
     request: (tick) => {
       const handle = next;
       next += 1;
@@ -19,55 +22,70 @@ const manualScheduler = (): Scheduler & {
       return handle;
     },
     cancel: (handle) => {
-      cancelled.splice(cancelled.length, 0, handle);
       ticks = ticks.filter((entry) => entry.handle !== handle);
     },
-    fire: (now) => {
+    fire: () => {
       const due = ticks;
       ticks = [];
       due.forEach((entry) => {
-        entry.tick(now);
+        entry.tick(time);
       });
     },
-    pending: () => ticks.length,
-    cancelled
+    advance: (ms) => {
+      time += ms;
+    },
+    pending: () => ticks.length
   };
 };
 
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-const harness = (
-  fetch: (index: number) => Promise<number> = (index) => Promise.resolve(index)
-): {
+interface Harness {
   readonly drawn: number[];
   readonly errors: unknown[];
+  readonly states: PlayerState[];
   readonly scheduler: ReturnType<typeof manualScheduler>;
-  readonly player: ReturnType<typeof createClipPlayer>;
-} => {
+  readonly clock: Clock;
+  readonly player: ReturnType<typeof createClipPlayer<number>>;
+  readonly at: (ms: number) => Promise<void>;
+}
+
+const harness = (
+  fetch: (field: number) => Promise<number> = (field) => Promise.resolve(field)
+): Harness => {
   const drawn: number[] = [];
   const errors: unknown[] = [];
+  const states: PlayerState[] = [];
   const scheduler = manualScheduler();
-  const player = createClipPlayer({
+  const clock = createWallClock(scheduler.now);
+  const player = createClipPlayer<number>({
     count: 3,
     fieldRate: 50,
+    autoplay: true,
+    clock,
     scheduler,
     fetch,
-    draw: (index) => drawn.splice(drawn.length, 0, index),
-    onError: (error) => errors.splice(errors.length, 0, error)
+    draw: (field) => drawn.splice(drawn.length, 0, field),
+    onError: (error) => errors.splice(errors.length, 0, error),
+    onState: (state) => states.splice(states.length, 0, state)
   });
-  return { drawn, errors, scheduler, player };
+  const at = async (ms: number): Promise<void> => {
+    scheduler.advance(ms);
+    scheduler.fire();
+    await settle();
+  };
+  return { drawn, errors, states, scheduler, clock, player, at };
 };
 
 describe('createClipPlayer', () => {
-  it('fetches and shows the field due at each tick at the field rate, looping', async () => {
+  it('starts playing and shows the field due at each tick at the field rate, looping', async () => {
     // Arrange
-    const { drawn, scheduler, player } = harness();
-    await player.start();
+    const { drawn, scheduler, player, at } = harness();
 
     // Act
-    for (const now of [1000, 1010, 1020, 1045, 1060, 1061]) {
-      scheduler.fire(now);
-      await settle();
+    await player.start();
+    for (const ms of [10, 10, 25, 15, 1]) {
+      await at(ms);
     }
 
     // Assert
@@ -75,107 +93,156 @@ describe('createClipPlayer', () => {
     expect(scheduler.pending()).toBe(1);
   });
 
-  it('skips fields while a fetch is still loading', async () => {
+  it('pauses on the field shown and resumes from it, reporting each state', async () => {
     // Arrange
-    let release: () => void = () => undefined;
-    const slow = (index: number): Promise<number> =>
-      index === 1
-        ? new Promise((resolve) => {
-            release = () => {
-              resolve(index);
-            };
-          })
-        : Promise.resolve(index);
-    const { drawn, scheduler, player } = harness(slow);
+    const { drawn, states, player, at } = harness();
+    await player.start();
+    await at(25);
+
+    // Act
+    await player.pause();
+    await at(100);
+    await player.toggle();
+    await at(20);
+    await player.toggle();
+
+    // Assert
+    expect(drawn).toEqual([0, 1, 2]);
+    expect(states.map((state) => [state.field, state.playing])).toEqual([
+      [0, true],
+      [1, true],
+      [1, false],
+      [1, true],
+      [2, true],
+      [2, false]
+    ]);
+    expect(states.every((state) => state.count === 3)).toBe(true);
+  });
+
+  it('steps one field back or forward while paused, wrapping at either end', async () => {
+    // Arrange
+    const { drawn, clock, player } = harness();
     await player.start();
 
     // Act
-    scheduler.fire(0);
-    scheduler.fire(20);
-    scheduler.fire(40);
+    await player.step(-1);
+    await player.step(1);
+    await player.step(1);
+
+    // Assert
+    expect(drawn).toEqual([0, 2, 0, 1]);
+    expect(clock.playing()).toBe(false);
+  });
+
+  it('jumps by seconds and rewinds to the first field', async () => {
+    // Arrange
+    const { drawn, player } = harness();
+    await player.start();
+
+    // Act
+    await player.jump(0.04);
+    await player.jump(-0.02);
+    await player.rewind();
+
+    // Assert
+    expect(drawn).toEqual([0, 2, 1, 0]);
+  });
+
+  it('skips fields while a fetch is loading and reports a fetch that fails', async () => {
+    // Arrange
+    let release: () => void = () => undefined;
+    const fetch = (field: number): Promise<number> => {
+      if (field === 1) {
+        return new Promise((resolve) => {
+          release = () => {
+            resolve(field);
+          };
+        });
+      }
+      return field === 2 ? Promise.reject(new Error('read failed')) : Promise.resolve(field);
+    };
+    const { drawn, errors, player, at } = harness(fetch);
+    await player.start();
+
+    // Act
+    await at(20);
+    await at(20);
     release();
     await settle();
+    await at(1);
 
     // Assert
     expect(drawn).toEqual([0, 1]);
-  });
-
-  it('reports a fetch that fails during playback', async () => {
-    // Arrange
-    const failing = (index: number): Promise<number> =>
-      index === 0 ? Promise.resolve(0) : Promise.reject(new Error('read failed'));
-    const { errors, scheduler, player } = harness(failing);
-    await player.start();
-
-    // Act
-    scheduler.fire(0);
-    scheduler.fire(25);
-    await settle();
-
-    // Assert
     expect(errors.map((error) => (error instanceof Error ? error.message : ''))).toEqual([
       'read failed'
     ]);
   });
 
-  it('reports a fetch that fails when starting, rewinding or redrawing', async () => {
+  it('starts once, stops ticking, and redraws the field on screen', async () => {
     // Arrange
-    const { errors, player } = harness(() => Promise.reject(new Error('gone')));
-
-    // Act
-    await player.start();
-    await player.rewind();
-    await player.redraw();
-
-    // Assert
-    expect(errors).toHaveLength(3);
-  });
-
-  it('starts once, stops by cancelling the pending tick and stops only once', async () => {
-    // Arrange
-    const { scheduler, player } = harness();
+    const { drawn, scheduler, player } = harness();
     await player.start();
     await player.start();
 
     // Act
     player.stop();
     player.stop();
-
-    // Assert
-    expect(scheduler.cancelled).toEqual([1]);
-    expect(scheduler.pending()).toBe(0);
-  });
-
-  it('rewinds to the first field and restarts the clock at the next tick', async () => {
-    // Arrange
-    const { drawn, scheduler, player } = harness();
-    await player.start();
-    scheduler.fire(0);
-    scheduler.fire(25);
-    await settle();
-
-    // Act
-    await player.rewind();
-    scheduler.fire(500);
-    scheduler.fire(520);
-    await settle();
-
-    // Assert
-    expect(drawn).toEqual([0, 1, 0, 1]);
-  });
-
-  it('redraws the field on screen without moving the clip', async () => {
-    // Arrange
-    const { drawn, scheduler, player } = harness();
-    await player.start();
-    scheduler.fire(0);
-    scheduler.fire(45);
-    await settle();
-
-    // Act
     await player.redraw();
 
     // Assert
-    expect(drawn).toEqual([0, 2, 2]);
+    expect([scheduler.pending(), drawn]).toEqual([0, [0, 0]]);
+  });
+
+  it('reports a clock that refuses to play and stays paused', async () => {
+    // Arrange
+    const errors: unknown[] = [];
+    const scheduler = manualScheduler();
+    const clock: Clock = {
+      ...createWallClock(scheduler.now),
+      play: () => Promise.reject(new Error('autoplay blocked'))
+    };
+    const player = createClipPlayer<number>({
+      count: 3,
+      fieldRate: 50,
+      autoplay: true,
+      clock,
+      scheduler,
+      fetch: (field) => Promise.resolve(field),
+      draw: () => undefined,
+      onError: (error) => errors.splice(errors.length, 0, error),
+      onState: () => undefined
+    });
+
+    // Act
+    await player.start();
+
+    // Assert
+    expect([errors.length, clock.playing()]).toEqual([1, false]);
+  });
+
+  it('waits paused on the first field when it may not play on its own', async () => {
+    // Arrange
+    const scheduler = manualScheduler();
+    const clock = createWallClock(scheduler.now);
+    const drawn: number[] = [];
+    const player = createClipPlayer<number>({
+      count: 3,
+      fieldRate: 50,
+      autoplay: false,
+      clock,
+      scheduler,
+      fetch: (field) => Promise.resolve(field),
+      draw: (field) => drawn.splice(drawn.length, 0, field),
+      onError: () => undefined,
+      onState: () => undefined
+    });
+
+    // Act
+    await player.start();
+    scheduler.advance(100);
+    scheduler.fire();
+
+    // Assert
+    expect([drawn, clock.playing()]).toEqual([[0], false]);
   });
 });

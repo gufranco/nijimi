@@ -33,6 +33,9 @@ import { exportClip } from './exportClip';
 import { queryElements } from './queryElements';
 import type { Elements } from './queryElements';
 import { readControl } from './readControl';
+import { renderDeck } from './renderDeck';
+import { bindDeck } from './bindDeck';
+import { createClipAudio } from './createClipAudio';
 
 import { renderConsoleCheck } from './renderConsoleCheck';
 import { SHELL_HTML } from './shellHtml';
@@ -139,7 +142,9 @@ const reportFailure = (ctx: Context, key: MessageKey, message: string) => (error
 const refreshPreview = (ctx: Context): void => {
   const { main, flicker, framesVersion, settings, clip } = ctx.read();
   if (clip !== null) {
-    ctx.track(ctx.clips.show({ clip: clip.loaded, clipVersion: framesVersion, settings }));
+    ctx.track(
+      ctx.clips.show({ clip: clip.loaded, blob: clip.blob, clipVersion: framesVersion, settings })
+    );
     return;
   }
   ctx.clips.stop();
@@ -154,9 +159,12 @@ const showLoaded = (ctx: Context): void => {
   ctx.elements.exportButton.toggleAttribute('hidden', main === null || clip !== null);
   ctx.elements.exportVideoButton.toggleAttribute(
     'hidden',
-    clip === null || ctx.deps.recordingType === null
+    clip === null || ctx.deps.recordingType(false) === null
   );
   ctx.elements.flickerRemoveButton.toggleAttribute('hidden', flicker === null);
+  if (clip === null) {
+    renderDeck({ elements: ctx.elements, locale: localeOf(ctx), fieldRate: 1, state: null });
+  }
   renderSourceInfo(ctx);
   refreshPreview(ctx);
 };
@@ -242,7 +250,7 @@ const bindActions = (ctx: Context): void => {
   });
   elements.exportVideoButton.addEventListener('click', () => {
     const { clip } = ctx.read();
-    const mimeType = deps.recordingType;
+    const mimeType = clip === null ? null : deps.recordingType(clip.loaded.audio);
     if (clip === null || mimeType === null) {
       return;
     }
@@ -253,8 +261,9 @@ const bindActions = (ctx: Context): void => {
       canvas: elements.crtCanvas,
       wait: deps.wait,
       download: deps.download,
-      onStart: ctx.clips.rewind,
-      scheduler: deps.scheduler
+      onStart: ctx.clips.restart,
+      scheduler: deps.scheduler,
+      audio: ctx.clips.audioStream()
     });
     ctx.track(recording.catch(reportFailure(ctx, 'exportVideoFailed', 'video export failed')));
   });
@@ -395,6 +404,16 @@ export const startApp = (deps: AppDeps): App => {
       display,
       sourceCanvas: elements.sourceCanvas,
       scheduler: deps.scheduler,
+      createAudio: (blob) =>
+        createClipAudio({ blob, createElement: () => deps.doc.createElement('audio') }),
+      onState: (state) => {
+        renderDeck({
+          elements,
+          locale: localeOf(current()),
+          fieldRate: clipRate(current().read().settings),
+          state
+        });
+      },
       onBusy: (busy) => {
         setBusy(current(), busy);
       },
@@ -410,6 +429,7 @@ export const startApp = (deps: AppDeps): App => {
   bindForms(ctx);
   bindCompare(elements);
   bindActions(ctx);
+  bindDeck({ elements, transport: ctx.clips, track: ctx.track });
   bindFullscreen({
     button: elements.fullscreenButton,
     target: elements.tv,

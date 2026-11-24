@@ -45,6 +45,7 @@ const played = (
     offered,
     source: {
       lossy,
+      hasAudio: () => lossy,
       each: async (visit) => {
         for (const [frame, seconds] of frames) {
           offered.splice(offered.length, 0, seconds);
@@ -264,6 +265,9 @@ describe('loadClip', () => {
     const result = await load(clip.source);
 
     // Assert
-    expect(result.ok ? result.value.image.presence : 'refused').toBeNull();
+    expect(result.ok ? [result.value.image.presence, result.value.audio] : 'refused').toEqual([
+      null,
+      false
+    ]);
   });
 });

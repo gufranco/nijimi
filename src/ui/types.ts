@@ -17,7 +17,7 @@ export interface AppDeps {
   readonly download: (blob: Blob, name: string) => void;
   readonly scheduler: Scheduler;
   readonly imageDecoder: typeof ImageDecoder | undefined;
-  readonly recordingType: string | null;
+  readonly recordingType: (audio: boolean) => string | null;
   readonly wait: (ms: number) => Promise<void>;
   readonly openStore: () => Promise<FrameStore>;
   readonly createWorker: () => WorkerLike;

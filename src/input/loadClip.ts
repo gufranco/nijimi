@@ -118,7 +118,8 @@ const decodeClip = async (input: LoadClipInput): Promise<ClipResult> => {
       },
       frames,
       times: times.items(),
-      duration
+      duration,
+      audio: input.source.hasAudio()
     }
   };
 };

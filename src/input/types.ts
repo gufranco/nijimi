@@ -31,6 +31,7 @@ export type VisitFrame = (frame: RgbaImage, seconds: number) => Promise<boolean>
 
 export interface ClipSource {
   readonly lossy: boolean;
+  readonly hasAudio: () => boolean;
   readonly each: (visit: VisitFrame) => Promise<number>;
   readonly close: () => void;
 }
@@ -40,6 +41,7 @@ export interface LoadedClip {
   readonly frames: FrameReader;
   readonly times: readonly number[];
   readonly duration: number;
+  readonly audio: boolean;
 }
 
 export type ClipResult = InputResult<LoadedClip>;

@@ -9,8 +9,10 @@ import type { AppSettings } from '../settings/types';
 import type { SignalImage } from '../signal/types';
 import { unpackSignalImage } from '../signal/unpackSignalImage';
 import type { SignalClient } from '../worker/createSignalClient';
+import type { ClipAudio, Clock } from './clipClock';
 import { createClipPlayer } from './createClipPlayer';
-import type { ClipPlayer, Scheduler } from './createClipPlayer';
+import type { ClipPlayer, PlayerState, Scheduler } from './createClipPlayer';
+import { createWallClock } from './createWallClock';
 import { renderClip } from './renderClip';
 import type { RenderedClip } from './renderClip';
 import { renderSource } from './renderSource';
@@ -22,6 +24,8 @@ interface ClipStageOptions {
   readonly display: Display;
   readonly sourceCanvas: HTMLCanvasElement;
   readonly scheduler: Scheduler;
+  readonly createAudio: (blob: Blob) => ClipAudio;
+  readonly onState: (state: PlayerState) => void;
   readonly onBusy: (busy: boolean) => void;
   readonly onProgress: (done: number, total: number) => void;
   readonly onError: (error: Error) => void;
@@ -29,6 +33,7 @@ interface ClipStageOptions {
 
 export interface ClipInput {
   readonly clip: LoadedClip;
+  readonly blob: Blob;
   readonly clipVersion: number;
   readonly settings: AppSettings;
 }
@@ -36,13 +41,21 @@ export interface ClipInput {
 export interface ClipStage {
   readonly show: (input: ClipInput) => Promise<void>;
   readonly stop: () => void;
+  readonly play: () => Promise<void>;
+  readonly pause: () => Promise<void>;
+  readonly toggle: () => Promise<void>;
   readonly rewind: () => Promise<void>;
+  readonly step: (fields: number) => Promise<void>;
+  readonly jump: (seconds: number) => Promise<void>;
+  readonly restart: () => Promise<void>;
+  readonly audioStream: () => MediaStream | null;
 }
 
 interface Playing {
   readonly key: string;
   readonly player: ClipPlayer;
   readonly fields: FrameReader;
+  readonly audio: ClipAudio | null;
   readonly follow: (input: ClipInput) => void;
 }
 
@@ -68,14 +81,18 @@ const playerFor = (
   options: ClipStageOptions,
   input: ClipInput,
   sources: Uint32Array,
-  rendered: RenderedClip
+  rendered: RenderedClip,
+  clock: Clock
 ): { readonly player: ClipPlayer; readonly follow: (next: ClipInput) => void } => {
   let shown = input;
   const { width, height } = input.clip.image.frame;
   const player = createClipPlayer<FieldFrame>({
     count: sources.length,
     fieldRate: options.fieldRate(input.settings),
+    autoplay: !input.clip.audio,
+    clock,
     scheduler: options.scheduler,
+    onState: options.onState,
     fetch: async (field) => ({
       image: unpackSignalImage({
         ...rendered.layout,
@@ -124,12 +141,14 @@ const renderInto =
 export const createClipStage = (options: ClipStageOptions): ClipStage => {
   let controller = new AbortController();
   let playing: Playing | null = null;
+  const report = (error: unknown): void => {
+    options.onError(toError(error));
+  };
   const halt = (): void => {
     controller.abort(new Error('the clip render was superseded'));
     playing?.player.stop();
-    playing?.fields.discard().catch((error: unknown) => {
-      options.onError(toError(error));
-    });
+    playing?.fields.discard().catch(report);
+    playing?.audio?.close().catch(report);
     playing = null;
   };
   const render = async (input: ClipInput, key: string): Promise<void> => {
@@ -151,8 +170,10 @@ export const createClipStage = (options: ClipStageOptions): ClipStage => {
       options.onError(outcome);
       return;
     }
-    const { player, follow } = playerFor(options, input, sources, outcome);
-    playing = { key, player, fields: outcome.fields, follow };
+    const audio = input.clip.audio ? options.createAudio(input.blob) : null;
+    const clock = audio ?? createWallClock(options.scheduler.now);
+    const { player, follow } = playerFor(options, input, sources, outcome, clock);
+    playing = { key, player, fields: outcome.fields, audio, follow };
     await player.start();
   };
   return {
@@ -166,8 +187,28 @@ export const createClipStage = (options: ClipStageOptions): ClipStage => {
       await render(input, key);
     },
     stop: halt,
+    play: async () => {
+      await playing?.player.play();
+    },
+    pause: async () => {
+      await playing?.player.pause();
+    },
+    toggle: async () => {
+      await playing?.player.toggle();
+    },
     rewind: async () => {
       await playing?.player.rewind();
-    }
+    },
+    step: async (fields) => {
+      await playing?.player.step(fields);
+    },
+    jump: async (seconds) => {
+      await playing?.player.jump(seconds);
+    },
+    restart: async () => {
+      await playing?.player.rewind();
+      await playing?.player.play();
+    },
+    audioStream: () => playing?.audio?.stream() ?? null
   };
 };
