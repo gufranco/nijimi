@@ -249,6 +249,34 @@ describe('C09 and C10 edge rise times on a PAL picture sampled four times per cy
   });
 });
 
+describe('C19 component colour at the BT.601 half band', () => {
+  const PAL_FSC = 4_433_618.75;
+  const RATE = 4 * PAL_FSC;
+  const custom = { dotClockHz: PAL_FSC, cyclesPerLine: 283.75 };
+
+  it('changes colour about twice as slowly as brightness, each at its BT.601 band, at a red edge', () => {
+    // Arrange
+    const settings = signalSettings({
+      connection: Connection.Component,
+      standard: VideoStandard.PalBg,
+      preset: ConsolePreset.Custom,
+      custom
+    });
+
+    // Act
+    const image = simulateSignal([split([0, 0, 0], [0.8, 0, 0], 48, 3)], settings);
+
+    // Assert
+    const lumaRise = MEASURE.riseSeconds(MEASURE.rowLuma(image, 1), RATE);
+    const chromaRise = MEASURE.riseSeconds(MEASURE.rowRedDifference(image, 1), RATE);
+    expect(lumaRise).toBeGreaterThan((0.35 / 5.75e6) * 0.85);
+    expect(lumaRise).toBeLessThan((0.35 / 5.75e6) * 1.15);
+    expect(chromaRise).toBeGreaterThan((0.35 / 2.75e6) * 0.9);
+    expect(chromaRise).toBeLessThan((0.35 / 2.75e6) * 1.15);
+    expect(chromaRise / lumaRise).toBeGreaterThan(1.8);
+  });
+});
+
 describe('C11 pixel aspect ratio per console', () => {
   it.each([
     [ConsolePreset.Nes, VideoStandard.Ntsc, 256, 8 / 7],

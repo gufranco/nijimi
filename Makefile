@@ -36,6 +36,7 @@ typecheck: install
 
 test: install
 	$(RUN) pnpm test
+	$(RUN) pnpm test:engines
 
 build: install
 	$(RUN) pnpm build

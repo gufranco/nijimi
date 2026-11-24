@@ -46,7 +46,7 @@ make dev
 
 Then open <http://localhost:5173/nijimi/>.
 
-To run every check the CI runs, which covers formatting, lint, types, unit and browser tests with coverage, the build and the end-to-end tests:
+To run every check the CI runs, which covers formatting, lint, types, unit and browser tests with coverage, the screen tests again in WebKit, the build and the end-to-end tests:
 
 ```sh
 make ci
