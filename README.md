@@ -7,7 +7,7 @@ Open it at <https://gufranco.github.io/nijimi/>.
 ## Use it
 
 1. Choose a PNG, drop one on the screen, or paste one. For motion, choose a clip: WebM, MP4, animated GIF or animated PNG.
-2. Pick the connection, the video standard and the console whose timing you want.
+2. Check the settings in the dialog that opens: the console, the video standard, the connection and the scale, with a preview of the picture or the clip's first frame and its console check. Rendering starts when you press Render, so a long clip renders once with the settings you meant.
 3. Adjust the picture and the screen, then compare with the original, export the result as a PNG, or export a clip as a video.
 
 The address bar keeps every setting, so a link reproduces the same preview for anyone who opens it with the same image.

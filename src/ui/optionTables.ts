@@ -8,6 +8,13 @@ export type OptionEntry =
 const MAX_SCALE = 8;
 
 export const OPTION_TABLES: Readonly<Record<string, readonly OptionEntry[]>> = {
+  c: [
+    { value: 'rf', label: 'connectionRf' },
+    { value: 'composite', label: 'connectionComposite' },
+    { value: 'svideo', label: 'connectionSvideo' },
+    { value: 'component', label: 'connectionComponent' },
+    { value: 'rgb', label: 'connectionRgb' }
+  ],
   s: [
     { value: 'ntsc', label: 'standardNtsc' },
     { value: 'pal-bg', label: 'standardPalBg' },

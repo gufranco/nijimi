@@ -19,6 +19,7 @@ export const recordCanvas = async (input: {
   readonly wait: (ms: number) => Promise<void>;
   readonly onStart: () => Promise<void>;
 }): Promise<Blob> => {
+  await input.onStart();
   const stream = input.canvas.captureStream(0);
   const recorder = new MediaRecorder(stream, { mimeType: input.mimeType });
   let chunks: readonly Blob[] = [];
@@ -34,7 +35,6 @@ export const recordCanvas = async (input: {
     handle = input.scheduler.request(capture);
   };
   recorder.start();
-  await input.onStart();
   capture();
   await input.wait(input.seconds * MS_PER_SECOND);
   input.scheduler.cancel(handle);

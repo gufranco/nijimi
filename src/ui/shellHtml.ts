@@ -10,6 +10,35 @@ const select = (name: string, label: string, extra = ''): string => `
     <select id="control-${name}" name="${name}"></select>
   </label>`;
 
+const confirmSelect = (name: string, label: string): string => `
+  <label class="field" for="confirm-${name}">
+    <span class="field-label" data-i18n="${label}"></span>
+    <select id="confirm-${name}" name="${name}"></select>
+  </label>`;
+
+const CONFIRM_DIALOG = `
+<dialog class="confirm" id="confirm-dialog" aria-labelledby="confirm-title">
+  <form class="confirm-form" id="confirm-form" method="dialog">
+    <h2 class="confirm-title" id="confirm-title" data-i18n="confirmTitle"></h2>
+    <p class="hint" data-i18n="confirmHint"></p>
+    <div class="confirm-body">
+      <canvas class="confirm-canvas" id="confirm-canvas" role="img" data-i18n-label="confirmPreview"></canvas>
+      <div class="confirm-fields">
+        <p class="source-info" id="confirm-info"></p>
+        ${confirmSelect('p', 'console')}
+        ${confirmSelect('s', 'standard')}
+        ${confirmSelect('c', 'connection')}
+        ${confirmSelect('x', 'scale')}
+      </div>
+    </div>
+    <ul class="console-check-list" id="confirm-check"></ul>
+    <div class="confirm-actions">
+      <button type="button" class="button" id="confirm-cancel" data-i18n="confirmCancel"></button>
+      <button type="submit" class="button button-primary" id="confirm-render" value="render" data-i18n="confirmRender"></button>
+    </div>
+  </form>
+</dialog>`;
+
 const CONNECTIONS = [
   ['rf', 'connectionRf'],
   ['composite', 'connectionComposite'],
@@ -163,6 +192,7 @@ export const SHELL_HTML = `
   <p data-i18n="privacyNote"></p>
   <p><a href="https://github.com/gufranco/nijimi" data-i18n="sourceCode"></a></p>
 </footer>
+${CONFIRM_DIALOG}
 <input type="file" id="file-input" accept="image/png" hidden>
 <input type="file" id="flicker-input" accept="image/png" hidden>
 <input type="file" id="clip-input" accept="video/webm,video/mp4,image/gif,image/apng,.apng,.png" hidden>

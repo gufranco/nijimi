@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 
 import { decodePng } from './fixtures/decodePng';
 import { encodePng } from './fixtures/encodePng';
-import { openPage, waitForRender } from './support';
+import { confirmRender, openPage, waitForRender } from './support';
 
 const WHITE = encodePng(128, 96, () => [255, 255, 255]);
 
@@ -12,7 +12,7 @@ test('moves the linked screen controls when a screen model is picked', async ({ 
   const problems = await openPage(page);
 
   // Act
-  await page.locator('select[name=t]').selectOption('pvm');
+  await page.locator('#controls select[name=t]').selectOption('pvm');
 
   // Assert
   await expect(page.locator('input[name=sl]')).toHaveValue('0.8');
@@ -29,7 +29,7 @@ test('switches the model to custom when a linked control moves', async ({ page }
   await page.locator('input[name=b]').fill('0.5');
 
   // Assert
-  await expect(page.locator('select[name=t]')).toHaveValue('custom');
+  await expect(page.locator('#controls select[name=t]')).toHaveValue('custom');
   expect(problems).toEqual([]);
 });
 
@@ -38,12 +38,12 @@ test('switches to RGB and the handheld LCD screen when a Game Boy is picked', as
   const problems = await openPage(page);
 
   // Act
-  await page.locator('select[name=p]').selectOption('game-boy');
+  await page.locator('#controls select[name=p]').selectOption('game-boy');
 
   // Assert
   await expect(page.getByRole('radio', { name: 'RGB' })).toBeChecked();
-  await expect(page.locator('select[name=t]')).toHaveValue('lcd');
-  await expect(page.locator('select[name=m]')).toHaveValue('lcd-grid');
+  await expect(page.locator('#controls select[name=t]')).toHaveValue('lcd');
+  await expect(page.locator('#controls select[name=m]')).toHaveValue('lcd-grid');
   expect(problems).toEqual([]);
 });
 
@@ -58,6 +58,7 @@ test('exports an LCD grid with a dim gap every third pixel wherever WebGL2 runs'
   await page
     .locator('#file-input')
     .setInputFiles({ name: 'white.png', mimeType: 'image/png', buffer: WHITE });
+  await confirmRender(page);
   await waitForRender(page);
   const download = page.waitForEvent('download');
 

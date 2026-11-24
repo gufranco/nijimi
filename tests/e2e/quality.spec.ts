@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 import { decodePng } from './fixtures/decodePng';
 import { encodePng } from './fixtures/encodePng';
-import { loadArt, openPage, waitForRender } from './support';
+import { confirmRender, loadArt, openPage, waitForRender } from './support';
 
 const WHITE = encodePng(32, 24, () => [255, 255, 255]);
 const LARGE = encodePng(320, 240, (x, y) => [(x * 7) % 256, (y * 5) % 256, ((x + y) * 3) % 256]);
@@ -52,6 +52,7 @@ test('exports an aperture grille in red, green and blue stripes 3 pixels apart w
   await page
     .locator('#file-input')
     .setInputFiles({ name: 'white.png', mimeType: 'image/png', buffer: WHITE });
+  await confirmRender(page);
   await waitForRender(page);
   const download = page.waitForEvent('download');
 
@@ -83,6 +84,7 @@ test('redraws a mask change on the screen alone, without rerunning the signal', 
     mimeType: 'image/png',
     buffer: LARGE
   });
+  await confirmRender(page);
   await waitForRender(page);
   await page.evaluate(() => {
     const busy = document.querySelector('#busy');
@@ -94,7 +96,7 @@ test('redraws a mask change on the screen alone, without rerunning the signal', 
   });
 
   // Act
-  await page.locator('select[name=m]').selectOption('slot-mask');
+  await page.locator('#controls select[name=m]').selectOption('slot-mask');
 
   // Assert
   await expect(page).toHaveURL(/m=slot-mask/);

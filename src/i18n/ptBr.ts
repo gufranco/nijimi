@@ -129,6 +129,12 @@ export const PT_BR: Messages = {
   controls: 'Controles',
   copyFailed: 'Não foi possível copiar o link.',
   exportFailed: 'Não foi possível exportar o PNG.',
+  confirmTitle: 'Confira as configurações antes de renderizar',
+  confirmHint:
+    'A renderização roda uma vez com estas configurações. Mude agora para não renderizar de novo.',
+  confirmPreview: 'Primeiro quadro do arquivo',
+  confirmCancel: 'Cancelar',
+  confirmRender: 'Renderizar',
   chooseClip: 'Escolher clipe',
   exportVideo: 'Exportar vídeo',
   exportVideoFailed: 'Não foi possível exportar o vídeo.',

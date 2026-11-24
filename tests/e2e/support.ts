@@ -48,7 +48,12 @@ export const waitForRender = async (page: Page): Promise<void> => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 };
 
+export const confirmRender = async (page: Page): Promise<void> => {
+  await page.locator('#confirm-render').click();
+};
+
 export const loadArt = async (page: Page): Promise<void> => {
   await page.locator('#file-input').setInputFiles(PNG_FILE);
+  await confirmRender(page);
   await waitForRender(page);
 };

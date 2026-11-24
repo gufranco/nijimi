@@ -50,6 +50,12 @@ export interface Elements {
   readonly fileInput: HTMLInputElement;
   readonly flickerInput: HTMLInputElement;
   readonly clipInput: HTMLInputElement;
+  readonly confirmDialog: HTMLDialogElement;
+  readonly confirmForm: HTMLFormElement;
+  readonly confirmCanvas: HTMLCanvasElement;
+  readonly confirmInfo: HTMLElement;
+  readonly confirmCheck: HTMLElement;
+  readonly confirmCancel: HTMLButtonElement;
 }
 
 export const queryElements = (root: ParentNode): Elements => ({
@@ -93,5 +99,11 @@ export const queryElements = (root: ParentNode): Elements => ({
   flickerRemoveButton: byId(root, 'flicker-remove-button', HTMLButtonElement),
   fileInput: byId(root, 'file-input', HTMLInputElement),
   flickerInput: byId(root, 'flicker-input', HTMLInputElement),
-  clipInput: byId(root, 'clip-input', HTMLInputElement)
+  clipInput: byId(root, 'clip-input', HTMLInputElement),
+  confirmDialog: byId(root, 'confirm-dialog', HTMLDialogElement),
+  confirmForm: byId(root, 'confirm-form', HTMLFormElement),
+  confirmCanvas: byId(root, 'confirm-canvas', HTMLCanvasElement),
+  confirmInfo: byId(root, 'confirm-info', HTMLElement),
+  confirmCheck: byId(root, 'confirm-check', HTMLElement),
+  confirmCancel: byId(root, 'confirm-cancel', HTMLButtonElement)
 });

@@ -7,7 +7,7 @@ import { encodeGif } from '../fixtures/encodeGif';
 import { encodeApng } from './fixtures/encodePng';
 import { recordClip } from './fixtures/recordClip';
 import { recordSmsClip } from './fixtures/recordSmsClip';
-import { openPage, waitForRender } from './support';
+import { confirmRender, openPage, waitForRender } from './support';
 
 const GENESIS = './#p=genesis-h40';
 
@@ -58,9 +58,13 @@ const canRecord = (page: Page): Promise<boolean> =>
 
 const pickClip = async (
   page: Page,
-  file: { name: string; mimeType: string; buffer: Buffer }
+  file: { name: string; mimeType: string; buffer: Buffer },
+  confirm = true
 ): Promise<void> => {
   await page.locator('#clip-input').setInputFiles(file);
+  if (confirm) {
+    await confirmRender(page);
+  }
 };
 
 test('plays an animated GIF at the console field rate', async ({ page }) => {
@@ -118,6 +122,7 @@ test('plays a dropped WebM video', async ({ page }) => {
 
   // Act
   await page.locator('#screen').dispatchEvent('drop', { dataTransfer: transfer });
+  await confirmRender(page);
 
   // Assert
   await expect(page.locator('#source-info')).toHaveText(
@@ -236,11 +241,15 @@ test('refuses a file that is not a clip', async ({ page }) => {
   const problems = await openPage(page, GENESIS);
 
   // Act
-  await pickClip(page, {
-    name: 'notes.txt',
-    mimeType: 'text/plain',
-    buffer: Buffer.from('not a clip')
-  });
+  await pickClip(
+    page,
+    {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('not a clip')
+    },
+    false
+  );
 
   // Assert
   await expect(page.locator('#notice')).toHaveText(

@@ -4,10 +4,7 @@ import { detectLocale } from '../i18n/detectLocale';
 import type { Locale } from '../i18n/locale';
 import { translate } from '../i18n/translate';
 import type { MessageKey } from '../i18n/types';
-import { loadClip } from '../input/loadClip';
-import { loadPng } from '../input/loadPng';
-import { openClip } from '../input/openClip';
-import type { ClipResult, ClipSource, LoadedClip, LoadedImage } from '../input/types';
+import type { LoadedImage } from '../input/types';
 import { checkImage } from '../signal/checkImage';
 import { toError } from '../logging/toError';
 import { parseHash } from '../settings/parseHash';
@@ -22,17 +19,17 @@ import { applyTranslations } from './applyTranslations';
 import { bindFiles } from './bindFiles';
 import { bindFullscreen } from './bindFullscreen';
 import { bindView } from './bindView';
-import { clipErrorMessage } from './clipErrorMessage';
+import { createConfirmImport } from './confirmImport';
+import type { ConfirmImport } from './confirmImport';
 import { createClipStage } from './createClipStage';
 import { describeClip } from './describeClip';
+import { describeSource } from './describeSource';
 import type { ClipStage } from './createClipStage';
 import type { ViewController } from './bindView';
 import { createPreview } from './createPreview';
 import type { Preview } from './createPreview';
-import { errorMessage } from './errorMessage';
 import { exportCanvas } from './exportCanvas';
 import { exportClip } from './exportClip';
-import { FileSlot } from './fileSlot';
 import { queryElements } from './queryElements';
 import type { Elements } from './queryElements';
 import { readControl } from './readControl';
@@ -40,6 +37,9 @@ import { readControl } from './readControl';
 import { renderConsoleCheck } from './renderConsoleCheck';
 import { SHELL_HTML } from './shellHtml';
 import type { App, AppDeps } from './types';
+import type { AppState, Notice } from './appState';
+import { createImportFlow } from './importFlow';
+import type { ImportFlow } from './importFlow';
 import { updateVisibility } from './updateVisibility';
 import { writeControls } from './writeControls';
 
@@ -47,32 +47,12 @@ const SIGNAL_TIMEOUT_MS = 30_000;
 const EXPORT_NAME = 'nijimi-crt.png';
 const MAX_IDLE_ROUNDS = 64;
 
-interface Notice {
-  readonly key: MessageKey;
-  readonly params: Readonly<Record<string, string>>;
-  readonly tone: 'info' | 'error';
-}
-
-interface ClipState {
-  readonly loaded: LoadedClip;
-  readonly blob: Blob;
-}
-
-interface AppState {
-  readonly settings: AppSettings;
-  readonly mainBlob: Blob | null;
-  readonly main: LoadedImage | null;
-  readonly clip: ClipState | null;
-  readonly flicker: RgbFrame | null;
-  readonly framesVersion: number;
-  readonly notice: Notice | null;
-}
-
 interface Context {
   readonly deps: AppDeps;
   readonly elements: Elements;
   readonly preview: Preview;
   readonly clips: ClipStage;
+  readonly confirm: ConfirmImport;
   readonly view: ViewController;
   readonly read: () => AppState;
   readonly update: (change: (state: AppState) => Partial<AppState>) => void;
@@ -115,17 +95,8 @@ const renderSourceInfo = (ctx: Context): void => {
   }
   const locale = localeOf(ctx);
   renderCheck(ctx, main);
-  const size = translate(locale, 'nativeSize', {
-    width: String(main.frame.width),
-    height: String(main.frame.height)
-  });
-  const scale =
-    main.detectedScale === 1
-      ? ''
-      : `, ${translate(locale, 'scaleDetected', { scale: String(main.detectedScale) })}`;
   ctx.elements.sourceInfo.replaceChildren(
-    size +
-      scale +
+    describeSource(locale, main) +
       describeClip(locale, ctx.read().clip?.loaded ?? null, clipRate(ctx.read().settings))
   );
 };
@@ -145,6 +116,7 @@ const setProgress = (ctx: Context, done: number, total: number): void => {
 };
 
 const renderTexts = (ctx: Context): void => {
+  ctx.confirm.refresh();
   const { settings } = ctx.read();
   applyTranslations(ctx.deps.doc, localeOf(ctx));
   writeControls(ctx.elements.form, settings);
@@ -189,114 +161,46 @@ const showLoaded = (ctx: Context): void => {
   refreshPreview(ctx);
 };
 
-const decodeClip = async (ctx: Context, source: ClipSource): Promise<ClipResult> => {
-  setBusy(ctx, true);
-  return loadClip({
-    source,
-    scaleOverride: ctx.read().settings.scale,
-    preset: ctx.read().settings.signal.preset,
-    standard: ctx.read().settings.signal.standard,
-    store: await ctx.deps.openStore(),
-    onProgress: (decoded) => {
-      ctx.elements.busyProgress.replaceChildren(
-        translate(localeOf(ctx), 'progressDecoded', { done: String(decoded) })
-      );
-    },
-    logger: ctx.deps.logger
-  });
-};
-
-const releaseClip = (ctx: Context, clip: ClipState | null): void => {
-  clip?.loaded.frames.discard().catch((error: unknown) => {
-    ctx.deps.logger.error({ err: error }, 'discarding the frames of a replaced clip failed');
-  });
-};
-
-const loadClipFile = async (ctx: Context, file: Blob): Promise<void> => {
-  const { deps } = ctx;
-  const opened = await openClip({
-    blob: file,
-    doc: deps.doc,
-    logger: deps.logger,
-    Decoder: deps.imageDecoder
-  });
-  const result = opened.ok ? await decodeClip(ctx, opened.value) : opened;
-  setBusy(ctx, false);
-  if (!result.ok) {
-    notify(ctx, {
-      key: clipErrorMessage(result.error),
-      params: { width: String(result.width), height: String(result.height) },
-      tone: 'error'
-    });
-    return;
-  }
-  const loaded = result.value;
-  releaseClip(ctx, ctx.read().clip);
-  ctx.update((state) => ({
-    main: loaded.image,
-    mainBlob: null,
-    clip: { loaded, blob: file },
-    flicker: null,
-    framesVersion: state.framesVersion + 1
-  }));
-  notify(ctx, null);
-  ctx.view.reset();
-  showLoaded(ctx);
-};
-
-const loadFile = async (ctx: Context, file: Blob, slot: FileSlot): Promise<void> => {
-  if (slot === FileSlot.Clip) {
-    await loadClipFile(ctx, file);
-    return;
-  }
-  const result = await loadPng({
-    blob: file,
-    scaleOverride: ctx.read().settings.scale,
-    logger: ctx.deps.logger
-  });
-  if (!result.ok) {
-    notify(ctx, {
-      key: errorMessage(result.error),
-      params: { width: String(result.width), height: String(result.height) },
-      tone: 'error'
-    });
-    return;
-  }
-  if (slot === FileSlot.Main) {
-    releaseClip(ctx, ctx.read().clip);
-  }
-  ctx.update((state) =>
-    slot === FileSlot.Main
-      ? { main: result.value, mainBlob: file, clip: null, framesVersion: state.framesVersion + 1 }
-      : { flicker: result.value.frame, framesVersion: state.framesVersion + 1 }
-  );
-  notify(
-    ctx,
-    slot === FileSlot.Main ? null : { key: 'flickerFrameLoaded', params: {}, tone: 'info' }
-  );
-  if (slot === FileSlot.Main) {
-    ctx.view.reset();
-  }
-  showLoaded(ctx);
-};
-
-const applySettings = (ctx: Context, next: AppSettings): void => {
+const adoptSettings = (ctx: Context, next: AppSettings, rewrite: boolean): AppSettings => {
   const previous = ctx.read().settings;
   ctx.update(() => ({ settings: next }));
   ctx.deps.replaceHash(serializeHash(next));
   updateVisibility(ctx.elements, next);
   if (next.locale !== previous.locale) {
     renderTexts(ctx);
-  } else if (next.display.crt !== previous.display.crt) {
+  } else if (rewrite || next.display.crt !== previous.display.crt) {
     writeControls(ctx.elements.form, next);
   }
+  return previous;
+};
+
+const importFlow = (ctx: Context): ImportFlow =>
+  createImportFlow({
+    ...ctx,
+    notify: (notice) => {
+      notify(ctx, notice);
+    },
+    setBusy: (busy) => {
+      setBusy(ctx, busy);
+    },
+    showLoaded: () => {
+      showLoaded(ctx);
+    },
+    locale: () => localeOf(ctx),
+    adopt: (settings) => {
+      adoptSettings(ctx, settings, true);
+    }
+  });
+
+const applySettings = (ctx: Context, next: AppSettings): void => {
+  const previous = adoptSettings(ctx, next, false);
   const { mainBlob: blob, clip } = ctx.read();
   if (next.scale !== previous.scale && blob !== null) {
-    ctx.track(loadFile(ctx, blob, FileSlot.Main));
+    ctx.track(importFlow(ctx).reloadPicture(blob));
     return;
   }
   if (clip !== null && next.scale !== previous.scale) {
-    ctx.track(loadClipFile(ctx, clip.blob));
+    ctx.track(importFlow(ctx).reloadClip(clip.blob));
     return;
   }
   renderSourceInfo(ctx);
@@ -382,7 +286,7 @@ const bindForms = (ctx: Context): void => {
     elements: ctx.elements,
     doc: ctx.deps.doc,
     onFile: (file, slot) => {
-      ctx.track(loadFile(ctx, file, slot));
+      ctx.track(importFlow(ctx).loadFile(file, slot));
     }
   });
 };
@@ -401,6 +305,7 @@ const firstNotice = (parsed: ParsedSettings, kind: DisplayKind): Notice | null =
 interface Stages {
   readonly preview: Preview;
   readonly clips: ClipStage;
+  readonly confirm: ConfirmImport;
 }
 
 const createContext = (
@@ -470,6 +375,17 @@ export const startApp = (deps: AppDeps): App => {
       },
       onError: (error) => {
         reportFailure(current(), 'errorRender', 'preview render failed')(error);
+      }
+    }),
+    confirm: createConfirmImport({
+      elements,
+      logger: deps.logger,
+      locale: () => localeOf(current()),
+      track: (work) => {
+        current().track(work);
+      },
+      onRender: (choice) => {
+        importFlow(current()).onConfirmed(choice);
       }
     }),
     clips: createClipStage({

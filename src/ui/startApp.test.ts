@@ -82,7 +82,7 @@ interface Booted {
   readonly app: App;
   readonly root: HTMLDivElement;
   readonly query: <T extends Element>(selector: string, type: abstract new () => T) => T;
-  readonly pick: (file: File, inputId?: string) => Promise<void>;
+  readonly pick: (file: File, inputId?: string, confirm?: boolean) => Promise<void>;
   readonly hashes: string[];
   readonly downloads: string[];
   readonly errors: Error[];
@@ -145,13 +145,24 @@ const boot = (overrides: Partial<AppDeps> = {}): Booted => {
     }
     return element;
   };
-  const pick = async (file: File, inputId = '#file-input'): Promise<void> => {
+  const pick = async (file: File, inputId = '#file-input', confirm = true): Promise<void> => {
     const input = query(inputId, HTMLInputElement);
     const transfer = new DataTransfer();
     transfer.items.add(file);
     Object.defineProperty(input, 'files', { value: transfer.files, configurable: true });
     input.dispatchEvent(new Event('change'));
     await app.idle();
+    const dialog = query('#confirm-dialog', HTMLDialogElement);
+    if (dialog.open && confirm) {
+      const closed = new Promise((resolve) => {
+        dialog.addEventListener('close', resolve, { once: true });
+      });
+      query('#confirm-form', HTMLFormElement).requestSubmit(
+        query('#confirm-render', HTMLButtonElement)
+      );
+      await closed;
+      await app.idle();
+    }
   };
   return { app, root, query, pick, hashes, downloads, errors };
 };
@@ -814,5 +825,123 @@ describe('startApp', () => {
     expect(page.errors.map((error) => error.message.split(' {')[0])).toEqual([
       'clip render failed'
     ]);
+  });
+
+  it('asks to confirm the settings before rendering, rechecks a new scale in the dialog, and renders only on Render', async () => {
+    // Arrange
+    const page = boot();
+    await page.pick(await pngFile(64, 32), '#file-input', false);
+    const dialog = page.query('#confirm-dialog', HTMLDialogElement);
+    const rendered = page.query('#crt-canvas', HTMLCanvasElement).hasAttribute('width');
+    const scale = page.query('#confirm-x', HTMLSelectElement);
+
+    // Act
+    scale.value = '2';
+    scale.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.app.idle();
+    const info = page.query('#confirm-info', HTMLElement).textContent;
+    const closed = new Promise((resolve) => {
+      dialog.addEventListener('close', resolve, { once: true });
+    });
+    page
+      .query('#confirm-form', HTMLFormElement)
+      .requestSubmit(page.query('#confirm-render', HTMLButtonElement));
+    await closed;
+    await page.app.idle();
+
+    // Assert
+    expect([dialog.open, rendered, info]).toEqual([
+      false,
+      false,
+      '32 x 16 native, Detected 8x scale'
+    ]);
+    expect(page.query('#source-info', HTMLElement).textContent).toBe(
+      '32 x 16 native, Detected 8x scale'
+    );
+    expect(page.hashes.at(-1)).toContain('x=2');
+  });
+
+  it('refuses a flicker frame that is not a PNG', async () => {
+    // Arrange
+    const page = boot();
+    await page.pick(await pngFile(64, 32));
+
+    // Act
+    await page.pick(await pngFile(8, 8, 'photo.jpg', 'image/jpeg'), '#flicker-input');
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe('Only PNG files are supported.');
+  });
+
+  it('reports a clip whose frames cannot be stored after Render', async () => {
+    // Arrange
+    const openStore = (): Promise<FrameStore> =>
+      Promise.resolve({
+        append: () => Promise.reject(new DOMException('no space left', 'QuotaExceededError')),
+        seal: () => createMemoryStore().seal(4)
+      });
+    const page = boot({ openStore });
+
+    // Act
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe('This clip could not be decoded.');
+    expect(page.query('#empty-state', HTMLElement).hidden).toBe(false);
+  });
+
+  it('names the size of a clip whose first frame is too large, without opening the dialog', async () => {
+    // Arrange
+    const page = boot();
+    const wide = new File(
+      [
+        encodeGif({
+          width: 4097,
+          height: 1,
+          palette: [
+            [0, 0, 0],
+            [255, 0, 0],
+            [0, 0, 255],
+            [255, 255, 255]
+          ],
+          frames: [
+            { pixels: Array.from({ length: 4097 }, (_, index) => index % 4), delayCentiseconds: 10 }
+          ]
+        })
+      ],
+      'wide.gif',
+      { type: 'image/gif' }
+    );
+
+    // Act
+    await page.pick(wide, '#clip-input', false);
+
+    // Assert
+    expect(page.query('#confirm-dialog', HTMLDialogElement).open).toBe(false);
+    expect(page.query('#notice', HTMLElement).textContent).toBe(
+      'This clip is 4097 x 1 at its native scale. The limit is 1024 x 1024.'
+    );
+  });
+
+  it('reports a clip that can no longer be opened when the scale changes', async () => {
+    // Arrange
+    let opened = 0;
+    class OnceDecoder extends ImageDecoder {
+      static override isTypeSupported(type: string): Promise<boolean> {
+        opened += 1;
+        return opened === 1 ? ImageDecoder.isTypeSupported(type) : Promise.resolve(false);
+      }
+    }
+    const page = boot({ imageDecoder: OnceDecoder });
+    await page.pick(gifFile(10), '#clip-input');
+
+    // Act
+    choose(page.query('select[name=x]', HTMLSelectElement), '2');
+    await page.app.idle();
+
+    // Assert
+    expect(page.query('#notice', HTMLElement).textContent).toBe(
+      'This browser cannot decode this clip. Use WebM, MP4, GIF or animated PNG.'
+    );
   });
 });

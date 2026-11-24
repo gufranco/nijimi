@@ -126,6 +126,11 @@ export interface Messages {
   readonly controls: string;
   readonly copyFailed: string;
   readonly exportFailed: string;
+  readonly confirmTitle: string;
+  readonly confirmHint: string;
+  readonly confirmPreview: string;
+  readonly confirmCancel: string;
+  readonly confirmRender: string;
   readonly chooseClip: string;
   readonly exportVideo: string;
   readonly exportVideoFailed: string;

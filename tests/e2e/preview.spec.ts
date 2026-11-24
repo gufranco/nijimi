@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 import { corruptPng, encodePng } from './fixtures/encodePng';
-import { ART, loadArt, openPage, PNG_FILE, waitForRender } from './support';
+import { ART, confirmRender, loadArt, openPage, PNG_FILE, waitForRender } from './support';
 
 test('shows the empty CRT set with no accessibility violations', async ({ page }) => {
   // Arrange
@@ -32,6 +32,27 @@ test('renders a PNG chosen with the picker, with no accessibility violations', a
   expect(problems).toEqual([]);
 });
 
+test('asks to confirm the settings before rendering, with no accessibility violations, and cancels on Escape', async ({
+  page
+}) => {
+  // Arrange
+  const problems = await openPage(page);
+  await page.locator('#file-input').setInputFiles(PNG_FILE);
+  const dialog = page.getByRole('dialog', { name: 'Check the settings before rendering' });
+  await expect(dialog).toBeVisible();
+  const violations = (await new AxeBuilder({ page }).include('#confirm-dialog').analyze())
+    .violations;
+
+  // Act
+  await page.keyboard.press('Escape');
+
+  // Assert
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#empty-state')).toBeVisible();
+  expect(violations).toEqual([]);
+  expect(problems).toEqual([]);
+});
+
 test('opens the file picker from the keyboard', async ({ page }) => {
   // Arrange
   const problems = await openPage(page);
@@ -43,6 +64,7 @@ test('opens the file picker from the keyboard', async ({ page }) => {
 
   // Assert
   await (await chooser).setFiles(PNG_FILE);
+  await confirmRender(page);
   await waitForRender(page);
   expect(problems).toEqual([]);
 });
@@ -58,6 +80,7 @@ test('renders a PNG dropped on the screen', async ({ page }) => {
 
   // Act
   await page.locator('#screen').dispatchEvent('drop', { dataTransfer: transfer });
+  await confirmRender(page);
 
   // Assert
   await waitForRender(page);
@@ -77,6 +100,7 @@ test('renders a pasted PNG', async ({ page }) => {
     Object.defineProperty(paste, 'clipboardData', { value: transfer });
     document.dispatchEvent(paste);
   }, bytes);
+  await confirmRender(page);
 
   // Assert
   await waitForRender(page);
@@ -146,6 +170,7 @@ test('detects a 4x export and processes it at native size', async ({ page }) => 
   await page
     .locator('#file-input')
     .setInputFiles({ name: 'big.png', mimeType: 'image/png', buffer: upscaled });
+  await confirmRender(page);
 
   // Assert
   await waitForRender(page);
@@ -177,8 +202,8 @@ test('restores settings from a shared link', async ({ page }) => {
 
   // Assert
   await expect(page.locator('input[name=c][value=svideo]')).toBeChecked();
-  await expect(page.locator('select[name=s]')).toHaveValue('pal-m');
-  await expect(page.locator('select[name=p]')).toHaveValue('genesis-h40');
+  await expect(page.locator('#controls select[name=s]')).toHaveValue('pal-m');
+  await expect(page.locator('#controls select[name=p]')).toHaveValue('genesis-h40');
   expect(problems).toEqual([]);
 });
 

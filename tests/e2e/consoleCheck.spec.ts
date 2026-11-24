@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 import { encodePng } from './fixtures/encodePng';
-import { openPage, waitForRender } from './support';
+import { confirmRender, openPage, waitForRender } from './support';
 
 const GENESIS = './#p=genesis-h40&x=1';
 
@@ -18,6 +18,7 @@ const load = async (
     mimeType: 'image/png',
     buffer: encodePng(width, height, pixel)
   });
+  await confirmRender(page);
   await waitForRender(page);
 };
 

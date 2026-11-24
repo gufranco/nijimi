@@ -251,6 +251,58 @@ a {
   pointer-events: none;
 }
 
+.confirm {
+  max-width: min(44rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.confirm::backdrop {
+  background: rgb(22 22 30 / 0.8);
+}
+
+.confirm-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.confirm-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-block: 1rem;
+}
+
+.confirm-canvas {
+  width: 100%;
+  image-rendering: pixelated;
+  background: var(--bg-deep);
+  border-radius: 8px;
+}
+
+.confirm-fields {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 40rem) {
+  .confirm-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .empty-actions {
   display: flex;
   flex-wrap: wrap;
