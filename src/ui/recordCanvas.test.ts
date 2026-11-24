@@ -1,6 +1,6 @@
+import { BlobSource, Input, WEBM } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 
-import { hasAudio } from '../input/hasAudio';
 import { recordCanvas } from './recordCanvas';
 
 const firstFrameRed = async (blob: Blob): Promise<number> => {
@@ -98,13 +98,8 @@ describe('recordCanvas', () => {
     // Assert
     tone.stop();
     await sound.close();
-    const video = document.createElement('video');
-    video.muted = true;
-    video.src = URL.createObjectURL(blob);
-    await video.play();
-    await new Promise((resolve) => {
-      video.addEventListener('ended', resolve, { once: true });
-    });
-    expect(hasAudio(video)).toBe(true);
+    const media = new Input({ formats: [WEBM], source: new BlobSource(blob) });
+    expect(await (await media.getPrimaryAudioTrack())?.getCodec()).toBe('opus');
+    media.dispose();
   });
 });
