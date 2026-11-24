@@ -26,12 +26,12 @@ const look: Preset = (mask, maskPitch, maskStrength, scanlines, bloom, curvature
 });
 
 export const CRT_PRESETS: Readonly<Record<Exclude<CrtModel, CrtModel.Custom>, CrtLook>> = {
-  [CrtModel.ConsumerShadowMask]: look(MaskKind.ShadowMask, 2, 0.5, 0.3, 0.35, 0.25),
-  [CrtModel.ConsumerApertureGrille]: look(MaskKind.ApertureGrille, 2, 0.4, 0.4, 0.3, 0.15),
-  [CrtModel.ConsumerSlotMask]: look(MaskKind.SlotMask, 2, 0.45, 0.35, 0.3, 0.2),
-  [CrtModel.ProfessionalMonitor]: look(MaskKind.ApertureGrille, 1, 0.35, 0.8, 0.15, 0.05),
-  [CrtModel.BroadcastMonitor]: look(MaskKind.ApertureGrille, 1, 0.25, 0.95, 0.1, 0),
-  [CrtModel.PcMonitor]: look(MaskKind.ShadowMask, 1, 0.3, 0.9, 0.1, 0.05),
-  [CrtModel.ArcadeMonitor]: look(MaskKind.ShadowMask, 2, 0.45, 0.7, 0.25, 0.2),
+  [CrtModel.ConsumerShadowMask]: look(MaskKind.ShadowMask, 2, 0.5, 0.85, 0.35, 0.25),
+  [CrtModel.ConsumerApertureGrille]: look(MaskKind.ApertureGrille, 2, 0.4, 0.9, 0.3, 0.15),
+  [CrtModel.ConsumerSlotMask]: look(MaskKind.SlotMask, 2, 0.45, 0.85, 0.3, 0.2),
+  [CrtModel.ProfessionalMonitor]: look(MaskKind.ApertureGrille, 1, 0.35, 1, 0.15, 0.05),
+  [CrtModel.BroadcastMonitor]: look(MaskKind.ApertureGrille, 1, 0.25, 1, 0.1, 0),
+  [CrtModel.PcMonitor]: look(MaskKind.ShadowMask, 1, 0.3, 1, 0.1, 0.05),
+  [CrtModel.ArcadeMonitor]: look(MaskKind.ShadowMask, 2, 0.45, 0.9, 0.25, 0.2),
   [CrtModel.HandheldLcd]: look(MaskKind.LcdGrid, 1, 0.6, 0, 0, 0)
 };

@@ -33,7 +33,7 @@ describe('writeControls', () => {
     expect(doc.querySelector<HTMLInputElement>('input[name=c]:checked')?.value).toBe('composite');
     expect(doc.querySelector<HTMLSelectElement>('select[name=p]')?.value).toBe('genesis-h40');
     expect(doc.querySelector<HTMLInputElement>('input[name=os]')?.checked).toBe(true);
-    expect(doc.querySelector<HTMLInputElement>('input[name=sl]')?.value).toBe('0.6');
-    expect(doc.querySelector('#output-sl')?.textContent).toBe('0.6');
+    expect(doc.querySelector<HTMLInputElement>('input[name=sl]')?.value).toBe('0.9');
+    expect(doc.querySelector('#output-sl')?.textContent).toBe('0.9');
   });
 });

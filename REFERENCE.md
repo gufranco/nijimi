@@ -174,14 +174,14 @@ Each constant is checked against the document named here. Status is one of: prim
 
 ## Screen stage
 
-| Control   | Effect                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| Gamma     | Signal to light with the chosen exponent, 2.4 by default, then encoded for an sRGB display                   |
-| Scanlines | Gaussian beam per line, wider for bright lines and narrower for dark ones                                    |
-| Mask      | Aperture grille, slot mask with staggered gaps every 4 rows, or shadow mask with triads shifted every 2 rows |
-| Bloom     | Light spread from neighboring samples and lines                                                              |
-| Curvature | Barrel warp with black corners                                                                               |
-| Overscan  | Crops 5 percent from each edge, the action-safe area                                                         |
+| Control   | Effect                                                                                                                                                     |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gamma     | Signal to light with the chosen exponent, 2.4 by default, then encoded for an sRGB display                                                                 |
+| Scanlines | Gaussian beam per field line, wider for bright lines and narrower for dark ones; in 480i each field keeps the 240p beam, so the other field fills its gaps |
+| Mask      | Aperture grille, slot mask with staggered gaps every 4 rows, or shadow mask with triads shifted every 2 rows                                               |
+| Bloom     | Light spread from neighboring samples and lines                                                                                                            |
+| Curvature | Barrel warp with black corners                                                                                                                             |
+| Overscan  | Crops 5 percent from each edge, the action-safe area                                                                                                       |
 
 ## Screen models
 
@@ -189,14 +189,16 @@ A screen model sets the mask, mask pitch, mask strength, scanline strength, bloo
 
 | Model                           | Mask            | Pitch | Strength | Scanlines | Bloom | Curvature | What it approximates                                                 |
 | ------------------------------- | --------------- | ----- | -------- | --------- | ----- | --------- | -------------------------------------------------------------------- |
-| Consumer TV, shadow mask        | shadow          | 2     | 0.5      | 0.3       | 0.35  | 0.25      | MiSTer `Consumer TV (Generic)`; RetroTINK `Consumer-1`, `Consumer-2` |
-| Consumer TV, aperture grille    | aperture grille | 2     | 0.4      | 0.4       | 0.3   | 0.15      | RetroTINK `Consumer Trinitron`, MiSTer `Sony Trinitron`              |
-| Consumer TV, slot mask          | slot            | 2     | 0.45     | 0.35      | 0.3   | 0.2       | RetroTINK `Consumer Slot Mask`, `Slot Mask`                          |
-| Professional monitor, PVM-style | aperture grille | 1     | 0.35     | 0.8       | 0.15  | 0.05      | RetroTINK `PVM-600`, MiSTer `Sony PVM (Generic)`                     |
-| Broadcast monitor, BVM-style    | aperture grille | 1     | 0.25     | 0.95      | 0.1   | 0         | RetroTINK `BVM`, `BVM 1000`                                          |
-| PC and VGA monitor              | shadow          | 1     | 0.3      | 0.9       | 0.1   | 0.05      | MiSTer `PC Monitor (Generic)`                                        |
-| Arcade monitor                  | shadow          | 2     | 0.45     | 0.7       | 0.25  | 0.2       | MiSTer `Mitsubishi Megaview XC-3315C`                                |
+| Consumer TV, shadow mask        | shadow          | 2     | 0.5      | 0.85      | 0.35  | 0.25      | MiSTer `Consumer TV (Generic)`; RetroTINK `Consumer-1`, `Consumer-2` |
+| Consumer TV, aperture grille    | aperture grille | 2     | 0.4      | 0.9       | 0.3   | 0.15      | RetroTINK `Consumer Trinitron`, MiSTer `Sony Trinitron`              |
+| Consumer TV, slot mask          | slot            | 2     | 0.45     | 0.85      | 0.3   | 0.2       | RetroTINK `Consumer Slot Mask`, `Slot Mask`                          |
+| Professional monitor, PVM-style | aperture grille | 1     | 0.35     | 1         | 0.15  | 0.05      | RetroTINK `PVM-600`, MiSTer `Sony PVM (Generic)`                     |
+| Broadcast monitor, BVM-style    | aperture grille | 1     | 0.25     | 1         | 0.1   | 0         | RetroTINK `BVM`, `BVM 1000`                                          |
+| PC and VGA monitor              | shadow          | 1     | 0.3      | 1         | 0.1   | 0.05      | MiSTer `PC Monitor (Generic)`                                        |
+| Arcade monitor                  | shadow          | 2     | 0.45     | 0.9       | 0.25  | 0.2       | MiSTer `Mitsubishi Megaview XC-3315C`                                |
 | Handheld LCD                    | LCD grid        | 1     | 0.6      | 0         | 0     | 0         | MiSTer LCD styles for the Game Boy family                            |
+
+The beam is a Gaussian per field line with sigma `mix(0.5, mix(0.06, 0.28, sqrt(luma)), scanlines)` in units of the field line pitch, two rows per line in 480i, normalized to the same light per line. The widths are a model, set so that 240p shows the dark rows of a consumer TV: at four canvas rows per line the darkest row between two lines reads, in sRGB as a fraction of the line, 0.51 for 50 percent grey and 0.91 for white on the consumer shadow and slot masks, 0.45 and 0.89 on the consumer aperture grille, the arcade monitor and the default, and 0.29 and 0.85 on the PVM, BVM and PC models; `createGlDisplay.test.ts` holds each model to its ceiling.
 
 Sources for the names: the RetroTINK-4K and RetroTINK-5X Pro pages of the ConsoleMods wiki, and `MiSTer-devel/ShadowMasks_MiSTer` at 9f0948c. Every value in the table is a model choice: no datasheet or service manual giving mask pitch, beam width or bloom for these sets was read. The masks are drawn by nijimi, not copied from the scaler files. White points such as D93 are not offered, because no primary source for their chromaticity was read.
 

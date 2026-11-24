@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   display: {
     crt: CrtModel.Custom,
-    scanlines: 0.6,
+    scanlines: 0.9,
     mask: MaskKind.ApertureGrille,
     maskStrength: 0.35,
     maskPitch: 1,

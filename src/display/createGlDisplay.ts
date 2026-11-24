@@ -1,4 +1,5 @@
 import { MaskKind } from '../settings/maskKind';
+import { ScanMode } from '../signal/scanMode';
 import { compileProgram } from './compileProgram';
 import { displayGeometry } from './displayGeometry';
 import { sizeCanvas } from './sizeCanvas';
@@ -6,6 +7,7 @@ import { DisplayKind } from './displayKind';
 import { SHADER_SOURCE } from './shaderSource';
 import type { Display, DisplayGeometry, DisplayInput } from './types';
 
+const INTERLACED_PITCH = 2;
 const QUAD = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 const QUAD_VERTICES = 4;
 const MASK_CODES: Readonly<Record<MaskKind, number>> = {
@@ -49,6 +51,7 @@ const setUniforms = (
   gl.uniform2f(uniform('uOutputSize'), geometry.width, geometry.height);
   gl.uniform1f(uniform('uGamma'), input.gamma);
   gl.uniform1f(uniform('uScanlines'), input.settings.scanlines);
+  gl.uniform1f(uniform('uLinePitch'), input.scan === ScanMode.Interlaced ? INTERLACED_PITCH : 1);
   gl.uniform1i(uniform('uMask'), MASK_CODES[input.settings.mask]);
   gl.uniform1i(uniform('uMaskPitch'), input.settings.maskPitch);
   gl.uniform1f(uniform('uMaskStrength'), input.settings.maskStrength);

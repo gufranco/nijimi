@@ -411,7 +411,7 @@ describe('startApp', () => {
       page.query('input[name=b]', HTMLInputElement).value,
       page.query('input[name=cv]', HTMLInputElement).value,
       page.hashes.at(-1)
-    ]).toEqual(['0.95', '0.1', '0', '#t=bvm&sl=0.95&ms=0.25&b=0.1&cv=0']);
+    ]).toEqual(['1', '0.1', '0', '#t=bvm&sl=1&ms=0.25&b=0.1&cv=0']);
   });
 
   it('switches the language from the header and keeps it in the link', () => {

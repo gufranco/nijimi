@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { CRT_PRESETS } from '../settings/crtPresets';
 import { CrtModel } from '../settings/crtModel';
+import { DEFAULT_SETTINGS } from '../settings/defaultSettings';
 import { MaskKind } from '../settings/maskKind';
 import type { DisplaySettings } from '../settings/types';
 import { ScanMode } from '../signal/scanMode';
@@ -45,7 +47,8 @@ interface Rendered {
 const render = (
   image: SignalImage,
   settings: Partial<DisplaySettings> = {},
-  gamma = 2.4
+  gamma = 2.4,
+  scan: ScanMode = ScanMode.Progressive
 ): Rendered => {
   const canvas = document.createElement('canvas');
   const display = createGlDisplay(canvas);
@@ -53,7 +56,7 @@ const render = (
     image,
     settings: { ...PLAIN, ...settings },
     gamma,
-    scan: ScanMode.Progressive
+    scan
   });
   const gl = canvas.getContext('webgl2');
   const width = geometry?.width ?? 0;
@@ -74,6 +77,17 @@ const toLinear = (byte: number): number => {
 
 const verticalProfile = (frame: Rendered, x: number): readonly number[] =>
   Array.from({ length: frame.height }, (_, y) => toLinear(frame.pixel(x, y)[1] ?? 0));
+
+const middleRows = (frame: Rendered): readonly number[] =>
+  Array.from(
+    { length: frame.height / 2 },
+    (_, index) => frame.pixel(64, frame.height / 4 + index)[1] ?? 0
+  );
+
+const gapToLine = (frame: Rendered): number => {
+  const rows = middleRows(frame);
+  return Math.min(...rows) / Math.max(...rows);
+};
 
 const widthAboveHalf = (profile: readonly number[]): number => {
   const peak = Math.max(...profile);
@@ -130,6 +144,47 @@ describe('createGlDisplay', () => {
     // Assert
     const profile = verticalProfile(frame, 64);
     expect((profile[10] ?? 0) / (profile[12] ?? 1)).toBeGreaterThan(1.5);
+  });
+
+  it.each([
+    ['the default', DEFAULT_SETTINGS.display.scanlines, 0.6],
+    ['a consumer shadow mask TV', CRT_PRESETS[CrtModel.ConsumerShadowMask].scanlines, 0.65],
+    ['a consumer aperture grille TV', CRT_PRESETS[CrtModel.ConsumerApertureGrille].scanlines, 0.65],
+    ['a consumer slot mask TV', CRT_PRESETS[CrtModel.ConsumerSlotMask].scanlines, 0.65],
+    ['an arcade monitor', CRT_PRESETS[CrtModel.ArcadeMonitor].scanlines, 0.6],
+    ['a professional monitor', CRT_PRESETS[CrtModel.ProfessionalMonitor].scanlines, 0.4],
+    ['a broadcast monitor', CRT_PRESETS[CrtModel.BroadcastMonitor].scanlines, 0.4]
+  ])(
+    'C08 marks the dark row between 240p lines of a mid grey on %s at scanlines %s, at most %s of the line',
+    (_, scanlines, ceiling) => {
+      // Arrange
+      const image = signal(64, 8, () => 0.5);
+
+      // Act
+      const frame = render(image, { scanlines });
+
+      // Assert
+      expect(gapToLine(frame)).toBeLessThanOrEqual(ceiling);
+    }
+  );
+
+  it('C08 draws one 480i field with the same beam as 240p, so the other field fills its gaps', () => {
+    // Arrange
+    const progressive = signal(64, 8, () => 0.5);
+    const field = signal(64, 16, (_, y) => (y % 2 === 0 ? 0.5 : 0));
+    const scanlines = DEFAULT_SETTINGS.display.scanlines;
+
+    // Act
+    const [line240, line480] = [
+      render(progressive, { scanlines }),
+      render(field, { scanlines }, 2.4, ScanMode.Interlaced)
+    ].map(middleRows);
+
+    // Assert
+    expect(line480?.length).toBe(line240?.length);
+    expect(line480?.every((value, index) => Math.abs(value - (line240?.[index] ?? 0)) <= 2)).toBe(
+      true
+    );
   });
 
   it('C17 widens the beam of a bright line over a dim one', () => {

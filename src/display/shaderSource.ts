@@ -16,6 +16,7 @@ uniform vec2 uSourceSize;
 uniform vec2 uOutputSize;
 uniform float uGamma;
 uniform float uScanlines;
+uniform float uLinePitch;
 uniform int uMask;
 uniform int uMaskPitch;
 uniform float uMaskStrength;
@@ -51,13 +52,13 @@ vec2 warp(vec2 uv) {
 vec3 beam(float sx, float sy) {
   int r0 = int(floor(sy));
   vec3 sum = vec3(0.0);
-  for (int k = -1; k <= 1; k++) {
+  for (int k = -2; k <= 2; k++) {
     int r = r0 + k;
     vec3 c = rowAt(sx, r);
     float lum = clamp(dot(c, REC709), 0.0, 1.0);
-    float sigma = mix(0.5, mix(0.16, 0.34, sqrt(lum)), uScanlines);
+    float sigma = mix(0.5, mix(0.06, 0.28, sqrt(lum)), uScanlines) * uLinePitch;
     float d = sy - (float(r) + 0.5);
-    sum += c * exp(-d * d / (2.0 * sigma * sigma)) / (sigma * SQRT_TWO_PI);
+    sum += c * exp(-d * d / (2.0 * sigma * sigma)) * uLinePitch / (sigma * SQRT_TWO_PI);
   }
   return sum;
 }

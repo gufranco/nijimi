@@ -15,7 +15,7 @@ test('moves the linked screen controls when a screen model is picked', async ({ 
   await page.locator('#controls select[name=t]').selectOption('pvm');
 
   // Assert
-  await expect(page.locator('input[name=sl]')).toHaveValue('0.8');
+  await expect(page.locator('input[name=sl]')).toHaveValue('1');
   await expect(page.locator('input[name=b]')).toHaveValue('0.15');
   await expect(page).toHaveURL(/t=pvm/);
   expect(problems).toEqual([]);
@@ -23,7 +23,7 @@ test('moves the linked screen controls when a screen model is picked', async ({ 
 
 test('switches the model to custom when a linked control moves', async ({ page }) => {
   // Arrange
-  const problems = await openPage(page, './#t=bvm&sl=0.95&ms=0.25&b=0.1&cv=0');
+  const problems = await openPage(page, './#t=bvm&sl=1&ms=0.25&b=0.1&cv=0');
 
   // Act
   await page.locator('input[name=b]').fill('0.5');
