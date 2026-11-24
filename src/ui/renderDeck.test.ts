@@ -44,6 +44,7 @@ describe('renderDeck', () => {
       true,
       false
     ]);
+    expect(elements.vcrDeck.dataset['state']).toBe('playing');
     expect([
       elements.vcrSeek.max,
       elements.vcrSeek.value,
@@ -70,6 +71,7 @@ describe('renderDeck', () => {
       elements.vcrPlay.getAttribute('aria-label'),
       elements.vcrPlay.getAttribute('data-i18n-label')
     ]).toEqual(['play', 'Reproduzir', 'deckPlay']);
+    expect(elements.vcrDeck.dataset['state']).toBe('paused');
   });
 
   it('empties the deck and disables its buttons and slider without a clip', () => {
@@ -89,10 +91,11 @@ describe('renderDeck', () => {
     expect([
       elements.vcrCounter.textContent,
       elements.vcrDeck.hasAttribute('data-loaded'),
+      elements.vcrDeck.hasAttribute('data-state'),
       elements.vcrFastForward.disabled,
       elements.vcrSeek.disabled,
       elements.vcrSeek.value,
       elements.vcrSeek.getAttribute('aria-valuetext')
-    ]).toEqual(['-:--:--', false, true, true, '0', '-:--:--']);
+    ]).toEqual(['-:--:--', false, false, true, true, '0', '-:--:--']);
   });
 });

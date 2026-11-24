@@ -16,6 +16,11 @@ export const renderDeck = (input: {
   const playing = state?.playing ?? false;
   const label = playing ? 'deckPause' : 'deckPlay';
   elements.vcrDeck.toggleAttribute('data-loaded', state !== null);
+  if (state === null) {
+    elements.vcrDeck.removeAttribute('data-state');
+  } else {
+    elements.vcrDeck.setAttribute('data-state', playing ? 'playing' : 'paused');
+  }
   [
     elements.vcrStop,
     elements.vcrRewind,
