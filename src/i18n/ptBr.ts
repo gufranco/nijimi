@@ -137,6 +137,7 @@ export const PT_BR: Messages = {
   deckPause: 'Pausar',
   deckForward: 'Um campo para a frente',
   deckFastForward: 'Avançar 5 segundos',
+  deckSeek: 'Posição da fita',
   confirmTitle: 'Confira as configurações antes de renderizar',
   confirmHint:
     'A renderização roda uma vez com estas configurações. Mude agora para não renderizar de novo.',

@@ -137,6 +137,7 @@ export const JA: Messages = {
   deckPause: '一時停止',
   deckForward: '1フィールド進む',
   deckFastForward: '5秒早送り',
+  deckSeek: 'テープ位置',
   confirmTitle: '描画の前に設定を確認',
   confirmHint: 'この設定で一度だけ描画します。描画し直さずに済むよう、ここで変更してください。',
   confirmPreview: 'ファイルの最初のフレーム',

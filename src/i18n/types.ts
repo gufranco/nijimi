@@ -134,6 +134,7 @@ export interface Messages {
   readonly deckPause: string;
   readonly deckForward: string;
   readonly deckFastForward: string;
+  readonly deckSeek: string;
   readonly confirmTitle: string;
   readonly confirmHint: string;
   readonly confirmPreview: string;

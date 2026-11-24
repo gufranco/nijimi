@@ -8,6 +8,7 @@ export interface Transport {
   readonly rewind: () => Promise<void>;
   readonly step: (fields: number) => Promise<void>;
   readonly jump: (seconds: number) => Promise<void>;
+  readonly seek: (field: number) => Promise<void>;
 }
 
 export const bindDeck = (input: {
@@ -30,4 +31,7 @@ export const bindDeck = (input: {
   on(elements.vcrPlay, transport.toggle);
   on(elements.vcrForward, () => transport.step(1));
   on(elements.vcrFastForward, () => transport.jump(JUMP_SECONDS));
+  elements.vcrSeek.addEventListener('input', () => {
+    track(transport.seek(elements.vcrSeek.valueAsNumber));
+  });
 };

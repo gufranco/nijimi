@@ -137,6 +137,7 @@ export const EN: Messages = {
   deckPause: 'Pause',
   deckForward: 'One field forward',
   deckFastForward: 'Fast forward 5 seconds',
+  deckSeek: 'Tape position',
   confirmTitle: 'Check the settings before rendering',
   confirmHint: 'Rendering runs once with these settings. Change them now to avoid rendering again.',
   confirmPreview: 'First frame of the file',

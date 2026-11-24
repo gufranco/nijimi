@@ -21,6 +21,7 @@ export interface ClipPlayer {
   readonly rewind: () => Promise<void>;
   readonly step: (fields: number) => Promise<void>;
   readonly jump: (seconds: number) => Promise<void>;
+  readonly seek: (field: number) => Promise<void>;
   readonly redraw: () => Promise<void>;
 }
 
@@ -103,6 +104,7 @@ export const createClipPlayer = <T>(input: PlayerInput<T>): ClipPlayer => {
       return moveTo(wrap(shown + fields, input.count));
     },
     jump: (seconds) => moveTo(fieldAt(clock.time() + seconds)),
+    seek: (field) => moveTo(Math.min(input.count - 1, Math.max(0, Math.round(field)))),
     redraw: () => show(shown).catch(input.onError)
   };
 };

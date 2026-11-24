@@ -46,6 +46,8 @@ const VCR_DECK = `
         <div class="vcr-deck" id="vcr-deck" role="group" data-i18n-label="deckLabel">
           <div class="vcr-slot" aria-hidden="true"><span class="vcr-flap"></span></div>
           <output class="vcr-counter" id="vcr-counter">-:--:--</output>
+          <label class="visually-hidden" for="vcr-seek" data-i18n="deckSeek"></label>
+          <input type="range" class="vcr-seek" id="vcr-seek" min="0" max="0" step="1" value="0" aria-valuetext="-:--:--" disabled>
           <div class="vcr-buttons">${deckButton('stop', 'stop', 'deckStop')}${deckButton('rewind', 'rewind', 'deckRewind')}${deckButton('back', 'back', 'deckBack')}${deckButton('play', 'play', 'deckPlay')}${deckButton('forward', 'forward', 'deckForward')}${deckButton('fast-forward', 'fast-forward', 'deckFastForward')}
           </div>
         </div>`;

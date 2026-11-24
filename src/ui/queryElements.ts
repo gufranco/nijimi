@@ -58,6 +58,7 @@ export interface Elements {
   readonly confirmCancel: HTMLButtonElement;
   readonly vcrDeck: HTMLElement;
   readonly vcrCounter: HTMLOutputElement;
+  readonly vcrSeek: HTMLInputElement;
   readonly vcrStop: HTMLButtonElement;
   readonly vcrRewind: HTMLButtonElement;
   readonly vcrBack: HTMLButtonElement;
@@ -116,6 +117,7 @@ export const queryElements = (root: ParentNode): Elements => ({
   confirmCancel: byId(root, 'confirm-cancel', HTMLButtonElement),
   vcrDeck: byId(root, 'vcr-deck', HTMLElement),
   vcrCounter: byId(root, 'vcr-counter', HTMLOutputElement),
+  vcrSeek: byId(root, 'vcr-seek', HTMLInputElement),
   vcrStop: byId(root, 'vcr-stop', HTMLButtonElement),
   vcrRewind: byId(root, 'vcr-rewind', HTMLButtonElement),
   vcrBack: byId(root, 'vcr-back', HTMLButtonElement),

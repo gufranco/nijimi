@@ -273,6 +273,7 @@ describe('createClipStage', () => {
       stage.toggle(),
       stage.step(1),
       stage.jump(1),
+      stage.seek(1),
       stage.restart()
     ]);
     const clip = await clipOf();
@@ -282,6 +283,7 @@ describe('createClipStage', () => {
     await stage.pause();
     await stage.step(1);
     await stage.jump(-0.02);
+    await stage.seek(1);
     await stage.toggle();
     await stage.play();
     await stage.restart();
@@ -292,8 +294,9 @@ describe('createClipStage', () => {
       [0, false],
       [1, false],
       [0, false],
-      [0, true],
-      [0, true],
+      [1, false],
+      [1, true],
+      [1, true],
       [0, true],
       [0, true]
     ]);

@@ -47,6 +47,7 @@ export interface ClipStage {
   readonly rewind: () => Promise<void>;
   readonly step: (fields: number) => Promise<void>;
   readonly jump: (seconds: number) => Promise<void>;
+  readonly seek: (field: number) => Promise<void>;
   readonly restart: () => Promise<void>;
   readonly audioStream: () => MediaStream | null;
 }
@@ -204,6 +205,9 @@ export const createClipStage = (options: ClipStageOptions): ClipStage => {
     },
     jump: async (seconds) => {
       await playing?.player.jump(seconds);
+    },
+    seek: async (field) => {
+      await playing?.player.seek(field);
     },
     restart: async () => {
       await playing?.player.rewind();

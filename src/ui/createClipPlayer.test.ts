@@ -134,6 +134,24 @@ describe('createClipPlayer', () => {
     expect(clock.playing()).toBe(false);
   });
 
+  it('seeks to a field held inside the clip, keeping it playing or paused', async () => {
+    // Arrange
+    const { drawn, clock, player } = harness();
+    await player.start();
+    await player.seek(2);
+    const playingAfterSeek = clock.playing();
+    await player.pause();
+
+    // Act
+    await player.seek(7);
+    await player.seek(-3);
+    await player.seek(1.6);
+
+    // Assert
+    expect(drawn).toEqual([0, 2, 2, 0, 2]);
+    expect([playingAfterSeek, clock.playing()]).toEqual([true, false]);
+  });
+
   it('jumps by seconds and rewinds to the first field', async () => {
     // Arrange
     const { drawn, player } = harness();

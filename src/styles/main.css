@@ -389,6 +389,7 @@ a {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'slot counter'
+    'seek seek'
     'buttons buttons';
   gap: 0.6rem 1rem;
   align-items: center;
@@ -432,6 +433,16 @@ a {
   background: #050507;
   border-radius: 0.3rem;
   text-shadow: 0 0 0.4rem rgb(158 206 106 / 0.7);
+}
+
+.vcr-seek {
+  grid-area: seek;
+  cursor: pointer;
+}
+
+.vcr-seek:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .vcr-buttons {

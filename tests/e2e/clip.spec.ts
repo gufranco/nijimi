@@ -264,12 +264,22 @@ test('drives a clip from the VCR deck on the TV, with no accessibility violation
   await deck.getByRole('button', { name: 'Pause' }).click();
   await deck.getByRole('button', { name: 'One field forward' }).click();
   await deck.getByRole('button', { name: 'Stop and rewind to the start' }).click();
+  const seek = deck.getByRole('slider', { name: 'Tape position' });
+  await seek.focus();
+  await page.keyboard.press('End');
+  const atEnd = await seek.inputValue();
+  await page.keyboard.press('Home');
 
   // Assert
   await expect(deck.getByRole('button', { name: 'Play' })).toBeVisible();
   await expect(page.locator('#vcr-counter')).toHaveText('0:00:00');
+  expect([atEnd, await seek.inputValue(), await seek.getAttribute('aria-valuetext')]).toEqual([
+    '10',
+    '0',
+    '0:00:00'
+  ]);
   const sizes = await deck
-    .getByRole('button')
+    .locator('button, input')
     .evaluateAll((buttons) =>
       buttons.map((button) =>
         Math.min(button.getBoundingClientRect().width, button.getBoundingClientRect().height)

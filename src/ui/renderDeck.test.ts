@@ -23,7 +23,7 @@ const deck = (): Elements => {
 };
 
 describe('renderDeck', () => {
-  it('shows the tape position and a pause button while a clip plays', () => {
+  it('shows the tape position on the counter and slider and a pause button while a clip plays', () => {
     // Arrange
     const elements = deck();
 
@@ -44,6 +44,12 @@ describe('renderDeck', () => {
       true,
       false
     ]);
+    expect([
+      elements.vcrSeek.max,
+      elements.vcrSeek.value,
+      elements.vcrSeek.getAttribute('aria-valuetext'),
+      elements.vcrSeek.disabled
+    ]).toEqual(['3999', '3000', '0:01:00', false]);
   });
 
   it('shows a play button while paused, in the chosen language', () => {
@@ -66,7 +72,7 @@ describe('renderDeck', () => {
     ]).toEqual(['play', 'Reproduzir', 'deckPlay']);
   });
 
-  it('empties the deck and disables its buttons without a clip', () => {
+  it('empties the deck and disables its buttons and slider without a clip', () => {
     // Arrange
     const elements = deck();
     renderDeck({
@@ -83,7 +89,10 @@ describe('renderDeck', () => {
     expect([
       elements.vcrCounter.textContent,
       elements.vcrDeck.hasAttribute('data-loaded'),
-      elements.vcrFastForward.disabled
-    ]).toEqual(['-:--:--', false, true]);
+      elements.vcrFastForward.disabled,
+      elements.vcrSeek.disabled,
+      elements.vcrSeek.value,
+      elements.vcrSeek.getAttribute('aria-valuetext')
+    ]).toEqual(['-:--:--', false, true, true, '0', '-:--:--']);
   });
 });

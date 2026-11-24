@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe('bindDeck', () => {
-  it('sends each deck button to its transport command', async () => {
+  it('sends each deck button and the tape position slider to its transport command', async () => {
     // Arrange
     const root = document.createElement('div');
     root.innerHTML = SHELL_HTML;
@@ -35,7 +35,8 @@ describe('bindDeck', () => {
         pause: record('pause'),
         rewind: record('rewind'),
         step: record('step'),
-        jump: record('jump')
+        jump: record('jump'),
+        seek: record('seek')
       },
       track: (work) => {
         pending = Promise.all([pending, work]);
@@ -65,8 +66,22 @@ describe('bindDeck', () => {
       button.click();
       await pending;
     }, Promise.resolve());
+    elements.vcrSeek.removeAttribute('disabled');
+    elements.vcrSeek.max = '9';
+    elements.vcrSeek.value = '7';
+    elements.vcrSeek.dispatchEvent(new Event('input'));
+    await pending;
 
     // Assert
-    expect(calls).toEqual(['pause', 'rewind', 'jump -5', 'step -1', 'toggle', 'step 1', 'jump 5']);
+    expect(calls).toEqual([
+      'pause',
+      'rewind',
+      'jump -5',
+      'step -1',
+      'toggle',
+      'step 1',
+      'jump 5',
+      'seek 7'
+    ]);
   });
 });

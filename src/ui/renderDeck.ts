@@ -22,14 +22,17 @@ export const renderDeck = (input: {
     elements.vcrBack,
     elements.vcrPlay,
     elements.vcrForward,
-    elements.vcrFastForward
-  ].forEach((button) => {
-    button.toggleAttribute('disabled', state === null);
+    elements.vcrFastForward,
+    elements.vcrSeek
+  ].forEach((control) => {
+    control.toggleAttribute('disabled', state === null);
   });
   elements.vcrPlay.setAttribute('data-icon', playing ? 'pause' : 'play');
   elements.vcrPlay.setAttribute('data-i18n-label', label);
   elements.vcrPlay.setAttribute('aria-label', translate(input.locale, label));
-  elements.vcrCounter.replaceChildren(
-    state === null ? EMPTY_COUNTER : formatCounter(state.field / input.fieldRate)
-  );
+  const counter = state === null ? EMPTY_COUNTER : formatCounter(state.field / input.fieldRate);
+  elements.vcrCounter.replaceChildren(counter);
+  elements.vcrSeek.max = String(Math.max(0, (state?.count ?? 1) - 1));
+  elements.vcrSeek.value = String(state?.field ?? 0);
+  elements.vcrSeek.setAttribute('aria-valuetext', counter);
 };
