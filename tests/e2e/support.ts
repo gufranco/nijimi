@@ -15,7 +15,8 @@ export const PNG_FILE = { name: 'waterfall.png', mimeType: 'image/png', buffer: 
 const BROWSER_DIAGNOSTICS = [
   /GL Driver Message \(OpenGL, Performance/,
   /Failed to create WebGL context/,
-  /The execution of microtasks on this page was reordered to avoid unsafe execution/
+  /The execution of microtasks on this page was reordered to avoid unsafe execution/,
+  /^Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true\./
 ];
 
 const isBrowserDiagnostic = (text: string): boolean =>

@@ -11,6 +11,8 @@ export const recordWebm = async (input: {
   readonly colors: readonly string[];
   readonly frameMs: number;
   readonly audio?: boolean;
+  readonly video?: boolean;
+  readonly mimeType?: string;
 }): Promise<Blob> => {
   const canvas = document.createElement('canvas');
   canvas.width = input.width;
@@ -28,10 +30,11 @@ export const recordWebm = async (input: {
   tone.start();
   await sound.resume();
   const tracks = [
-    ...stream.getVideoTracks(),
+    ...(input.video === false ? [] : stream.getVideoTracks()),
     ...(input.audio === true ? output.stream.getAudioTracks() : [])
   ];
-  const recorder = new MediaRecorder(new MediaStream(tracks), { mimeType: 'video/webm' });
+  const mimeType = input.mimeType ?? 'video/webm';
+  const recorder = new MediaRecorder(new MediaStream(tracks), { mimeType });
   const chunks: Blob[] = [];
   recorder.addEventListener('dataavailable', (event) => {
     chunks.splice(chunks.length, 0, event.data);
@@ -58,5 +61,6 @@ export const recordWebm = async (input: {
   await stopped;
   tone.stop();
   await sound.close();
-  return new Blob(chunks, { type: 'video/webm' });
+  const [container = mimeType] = mimeType.split(';');
+  return new Blob(chunks, { type: container });
 };

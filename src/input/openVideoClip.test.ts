@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { registerDecoder } from 'mediabunny';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { recordWebm } from '../../tests/fixtures/recordWebm';
 import { createLogger } from '../logging/createLogger';
 import type { Logger } from '../logging/createLogger';
 import { openVideoClip } from './openVideoClip';
+import { OpaqueVpxDecoder } from './OpaqueVpxDecoder';
 import type { ClipSource } from './types';
 
 const sinkLogger = (sink: Error[]): Logger =>
@@ -12,8 +14,13 @@ const sinkLogger = (sink: Error[]): Logger =>
   });
 
 const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffffff'];
+const NAMES = ['red', 'green', 'blue', 'white'];
 
 const opened: ClipSource[] = [];
+
+beforeAll(() => {
+  registerDecoder(OpaqueVpxDecoder);
+});
 
 afterEach(() => {
   opened.splice(0).forEach((source) => {
@@ -22,16 +29,24 @@ afterEach(() => {
 });
 
 const open = async (blob: Blob): Promise<ClipSource> => {
-  const source = await openVideoClip({ blob, doc: document, logger: sinkLogger([]) });
+  const source = await openVideoClip({ blob, logger: sinkLogger([]) });
   opened.splice(opened.length, 0, source);
   return source;
 };
 
-const isRecordedColor = (rgb: readonly number[]): boolean =>
-  rgb.every((channel) => channel > 200 || channel < 60) && rgb.some((channel) => channel > 200);
+const colorName = (rgb: readonly number[]): string => {
+  const lit = rgb.map((channel) => channel > 128);
+  if (lit.every(Boolean)) {
+    return 'white';
+  }
+  return NAMES[lit.indexOf(true)] ?? 'black';
+};
+
+const distinctRuns = (names: readonly string[]): readonly string[] =>
+  names.filter((name, index) => index === 0 || name !== names[index - 1]);
 
 describe('openVideoClip', () => {
-  it('plays the clip through, offering frames in time order from the first, and returns its length', async () => {
+  it('decodes every frame of the clip in time order from zero and returns its length', async () => {
     // Arrange
     const blob = await recordWebm({ width: 16, height: 8, colors: COLORS, frameMs: 120 });
     const source = await open(blob);
@@ -44,16 +59,50 @@ describe('openVideoClip', () => {
     });
 
     // Assert
-    expect(seen.length).toBeGreaterThanOrEqual(2);
-    expect(seen.map(([seconds]) => seconds)).toEqual(
-      [...seen.map(([seconds]) => seconds)].toSorted((a, b) => a - b)
-    );
-    expect(seen[0]?.[0]).toBe(0);
-    expect(isRecordedColor(seen[0]?.[1] ?? [])).toBe(true);
-    expect(duration).toBeGreaterThanOrEqual(seen.at(-1)?.[0] ?? Infinity);
-    expect(document.querySelectorAll('video.clip-decoder')).toHaveLength(1);
-    source.close();
-    expect(document.querySelectorAll('video.clip-decoder')).toHaveLength(0);
+    const times = seen.map(([seconds]) => seconds);
+    expect(distinctRuns(seen.map(([, rgb]) => colorName(rgb)))).toEqual(NAMES);
+    expect(times).toEqual(times.toSorted((a, b) => a - b));
+    expect(times[0]).toBe(0);
+    expect(duration).toBeGreaterThanOrEqual(times.at(-1) ?? Infinity);
+  });
+
+  it('decodes every frame of a fragmented MP4 recording', async () => {
+    // Arrange
+    const blob = await recordWebm({
+      width: 16,
+      height: 8,
+      colors: COLORS,
+      frameMs: 120,
+      mimeType: 'video/mp4'
+    });
+    const source = await open(blob);
+    const seen: string[] = [];
+
+    // Act
+    await source.each((frame) => {
+      seen.splice(seen.length, 0, colorName([...frame.data.slice(0, 3)]));
+      return Promise.resolve(true);
+    });
+
+    // Assert
+    expect([blob.type, distinctRuns(seen)]).toEqual(['video/mp4', NAMES]);
+  });
+
+  it('decodes the clip again from its first frame on every pass', async () => {
+    // Arrange
+    const blob = await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 });
+    const source = await open(blob);
+    await source.each(() => Promise.resolve(true));
+    const seen: number[] = [];
+
+    // Act
+    await source.each((_, seconds) => {
+      seen.splice(seen.length, 0, seconds);
+      return Promise.resolve(false);
+    });
+
+    // Assert
+    expect(seen).toEqual([0]);
   });
 
   it('stops at once when the visitor declines the first frame', async () => {
@@ -70,10 +119,9 @@ describe('openVideoClip', () => {
 
     // Assert
     expect([stoppedAt, seen]).toEqual([0, [0]]);
-    source.close();
   });
 
-  it('stops at the first played frame the visitor declines', async () => {
+  it('stops at the frame the visitor declines', async () => {
     // Arrange
     const blob = await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 });
     const source = await open(blob);
@@ -88,7 +136,6 @@ describe('openVideoClip', () => {
     // Assert
     expect(seen).toHaveLength(2);
     expect(stoppedAt).toBe(seen[1]);
-    source.close();
   });
 
   it('rejects when the visitor fails', async () => {
@@ -101,39 +148,71 @@ describe('openVideoClip', () => {
 
     // Assert
     await expect(playing).rejects.toThrow('store full');
-    source.close();
   });
 
-  it('logs, releases and rejects a video that cannot load', async () => {
+  it('logs and rejects a file that is not a video it can read', async () => {
     // Arrange
     const sink: Error[] = [];
     const blob = new Blob([Uint8Array.from([1, 2, 3, 4])], { type: 'video/webm' });
 
     // Act
-    const opening = openVideoClip({ blob, doc: document, logger: sinkLogger(sink) });
+    const opening = openVideoClip({ blob, logger: sinkLogger(sink) });
 
     // Assert
-    await expect(opening).rejects.toThrow('an error event arrived while waiting for loadeddata');
+    await expect(opening).rejects.toThrow('Input has an unsupported or unrecognizable format.');
     expect(sink.map((error) => error.message.split(' {')[0])).toEqual([
-      'video failed to load, releasing it'
+      'video could not be opened, releasing it'
     ]);
-    expect(document.querySelectorAll('video.clip-decoder')).toHaveLength(0);
   });
 
-  it('tells whether the clip it played through has sound', async () => {
+  it('logs and rejects a file with no video track', async () => {
     // Arrange
-    const silent = await open(
-      await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 })
-    );
-    const loud = await open(
-      await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120, audio: true })
-    );
+    const sink: Error[] = [];
+    const blob = await recordWebm({
+      width: 8,
+      height: 8,
+      colors: COLORS,
+      frameMs: 120,
+      audio: true,
+      video: false
+    });
 
     // Act
-    await silent.each(() => Promise.resolve(true));
-    await loud.each(() => Promise.resolve(true));
+    const opening = openVideoClip({ blob, logger: sinkLogger(sink) });
+
+    // Assert
+    await expect(opening).rejects.toThrow('decodable video track is unavailable');
+    expect(sink).toHaveLength(1);
+  });
+
+  it('tells whether the clip has sound', async () => {
+    // Arrange
+    const silentBlob = await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 });
+    const loudBlob = await recordWebm({
+      width: 8,
+      height: 8,
+      colors: COLORS,
+      frameMs: 120,
+      audio: true
+    });
+
+    // Act
+    const [silent, loud] = await Promise.all([open(silentBlob), open(loudBlob)]);
 
     // Assert
     expect([silent.hasAudio(), loud.hasAudio()]).toEqual([false, true]);
+  });
+
+  it('refuses to decode after it was closed', async () => {
+    // Arrange
+    const blob = await recordWebm({ width: 8, height: 8, colors: COLORS, frameMs: 120 });
+    const source = await open(blob);
+    source.close();
+
+    // Act
+    const decoding = source.each(() => Promise.resolve(true));
+
+    // Assert
+    await expect(decoding).rejects.toThrow('Input has been disposed.');
   });
 });

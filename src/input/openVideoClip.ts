@@ -1,87 +1,70 @@
+import { BlobSource, Input, MATROSKA, MP4, QTFF, VideoSampleSink, WEBM } from 'mediabunny';
+import type { InputVideoTrack } from 'mediabunny';
+
+import { required } from '../display/required';
 import type { Logger } from '../logging/createLogger';
 import { grabFrame } from './grabFrame';
-import { hasAudio } from './hasAudio';
 import type { ClipSource, VisitFrame } from './types';
-import { waitForEvent } from './waitForEvent';
 
-const EVENT_TIMEOUT_MS = 10_000;
-const DECODER_CLASS = 'clip-decoder';
-const DECODE_PLAYBACK_RATE = 0.5;
+const VIDEO_FORMATS = [MP4, QTFF, MATROSKA, WEBM];
 
-const release = (video: HTMLVideoElement, url: string): void => {
-  video.removeAttribute('src');
-  video.load();
-  video.remove();
-  URL.revokeObjectURL(url);
+interface OpenedVideo {
+  readonly track: InputVideoTrack;
+  readonly first: number;
+  readonly end: number;
+  readonly audio: boolean;
+}
+
+const readTracks = async (media: Input): Promise<OpenedVideo> => {
+  const track = required(
+    await media.getPrimaryVideoTrack({ filter: (candidate) => candidate.canDecode() }),
+    'decodable video track'
+  );
+  return {
+    track,
+    first: await track.getFirstTimestamp(),
+    end: await track.computeDuration(),
+    audio: (await media.getPrimaryAudioTrack()) !== null
+  };
 };
 
-const playFrames =
-  (video: HTMLVideoElement) =>
-  (visit: VisitFrame): Promise<number> =>
-    new Promise((resolve, reject) => {
-      let last = 0;
-      const ended = (): void => {
-        resolve(Math.max(video.currentTime, last));
-      };
-      const step: VideoFrameRequestCallback = (_, metadata) => {
-        video.pause();
-        last = metadata.mediaTime;
-        visit(grabFrame(video, video.videoWidth, video.videoHeight), metadata.mediaTime)
-          .then(async (more) => {
-            if (!more) {
-              video.removeEventListener('ended', ended);
-              resolve(last);
-              return;
-            }
-            video.requestVideoFrameCallback(step);
-            await video.play();
-          })
-          .catch(reject);
-      };
-      video.addEventListener('ended', ended, { once: true });
-      visit(grabFrame(video, video.videoWidth, video.videoHeight), video.currentTime)
-        .then(async (more) => {
-          if (!more) {
-            video.removeEventListener('ended', ended);
-            resolve(video.currentTime);
-            return;
-          }
-          video.requestVideoFrameCallback(step);
-          await video.play();
-        })
-        .catch(reject);
-    });
+const decodeFrames =
+  (video: OpenedVideo) =>
+  async (visit: VisitFrame): Promise<number> => {
+    for await (const sample of new VideoSampleSink(video.track).samples()) {
+      const frame = grabFrame(
+        sample.toCanvasImageSource(),
+        sample.displayWidth,
+        sample.displayHeight
+      );
+      const seconds = sample.timestamp - video.first;
+      sample.close();
+      if (!(await visit(frame, seconds))) {
+        return seconds;
+      }
+    }
+    return video.end - video.first;
+  };
 
 export const openVideoClip = async (input: {
   readonly blob: Blob;
-  readonly doc: Document;
   readonly logger: Logger;
 }): Promise<ClipSource> => {
-  const url = URL.createObjectURL(input.blob);
-  const video = input.doc.createElement('video');
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = 'auto';
-  video.defaultPlaybackRate = DECODE_PLAYBACK_RATE;
-  video.playbackRate = DECODE_PLAYBACK_RATE;
-  video.classList.add(DECODER_CLASS);
-  input.doc.body.append(video);
-  const loaded = waitForEvent({ target: video, name: 'loadeddata', timeoutMs: EVENT_TIMEOUT_MS });
-  video.src = url;
-  await loaded.catch((error: unknown) => {
+  const media = new Input({ formats: VIDEO_FORMATS, source: new BlobSource(input.blob) });
+  const video = await readTracks(media).catch((error: unknown) => {
     input.logger.error(
-      { err: error, bytes: input.blob.size },
-      'video failed to load, releasing it'
+      { err: error, type: input.blob.type, bytes: input.blob.size },
+      'video could not be opened, releasing it'
     );
-    release(video, url);
+    media.dispose();
     throw error;
   });
   return {
     lossy: true,
-    hasAudio: () => hasAudio(video),
-    each: playFrames(video),
+    hasAudio: () => video.audio,
+    each: decodeFrames(video),
     close: () => {
-      release(video, url);
+      media.dispose();
     }
   };
 };

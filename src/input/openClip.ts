@@ -23,7 +23,7 @@ const refuse = (error: InputError): InputResult<ClipSource> => ({
 const pickOpener = async (input: OpenClipInput): Promise<Opener | null> => {
   const type = input.blob.type;
   if (type.startsWith('video/') && input.doc.createElement('video').canPlayType(type) !== '') {
-    return () => openVideoClip(input);
+    return () => openVideoClip({ blob: input.blob, logger: input.logger });
   }
   const Decoder = input.Decoder;
   if (Decoder !== undefined && type.startsWith('image/') && (await Decoder.isTypeSupported(type))) {
