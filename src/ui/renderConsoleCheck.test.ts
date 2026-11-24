@@ -24,7 +24,8 @@ const FAILING: ConsoleReport = {
     limit: 183,
     needs: SpecialMode.ShadowHighlight
   },
-  levels: { outcome: CheckOutcome.Fail, found: 40, limit: 15, needs: null }
+  levels: { outcome: CheckOutcome.Fail, found: 40, limit: 15, needs: null },
+  lossy: false
 };
 
 describe('renderConsoleCheck', () => {
@@ -40,7 +41,8 @@ describe('renderConsoleCheck', () => {
         fitting: [ConsolePreset.GenesisH40]
       },
       colors: { outcome: CheckOutcome.Pass, found: 40, limit: 61, needs: null },
-      levels: { outcome: CheckOutcome.Pass, found: 6, limit: 8, needs: null }
+      levels: { outcome: CheckOutcome.Pass, found: 6, limit: 8, needs: null },
+      lossy: false
     };
 
     // Act
@@ -102,7 +104,8 @@ describe('renderConsoleCheck', () => {
     const list = document.createElement('ul');
     const report: ConsoleReport = {
       ...FAILING,
-      levels: { outcome: CheckOutcome.NotApplicable, found: 9, limit: 0, needs: null }
+      levels: { outcome: CheckOutcome.NotApplicable, found: 9, limit: 0, needs: null },
+      lossy: false
     };
 
     // Act
@@ -124,5 +127,20 @@ describe('renderConsoleCheck', () => {
 
     // Assert
     expect(lines(list)).toEqual([['not-applicable', 'Custom timing: no console check.']]);
+  });
+
+  it('adds a note when the colors were measured on a compressed video', () => {
+    // Arrange
+    const list = document.createElement('ul');
+    const report: ConsoleReport = { ...FAILING, lossy: true };
+
+    // Act
+    renderConsoleCheck({ list, report, locale: Locale.En });
+
+    // Assert
+    expect(lines(list).at(-1)).toEqual([
+      CheckOutcome.NotApplicable,
+      "Measured on a compressed video, after snapping each color to this console's palette."
+    ]);
   });
 });

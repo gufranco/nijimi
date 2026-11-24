@@ -6,6 +6,7 @@ import type { Page } from '@playwright/test';
 import { encodeGif } from '../fixtures/encodeGif';
 import { encodeApng } from './fixtures/encodePng';
 import { recordClip } from './fixtures/recordClip';
+import { recordSmsClip } from './fixtures/recordSmsClip';
 import { openPage, waitForRender } from './support';
 
 const GENESIS = './#p=genesis-h40';
@@ -201,6 +202,32 @@ test('exports one loop of a clip whose first frame shows the picture, as MP4 whe
   expect(exported?.name ?? null).toBe(extension === null ? null : `nijimi-crt.${extension}`);
   expect(exported === null || exported.firstFrameLevel > 10).toBe(true);
   await expect(page.locator('#export-video-button')).toBeVisible({ visible: recordable });
+  expect(problems).toEqual([]);
+});
+
+test('checks a compressed Master System video against the console palette, not its compression noise', async ({
+  page
+}) => {
+  // Arrange
+  const problems = await openPage(page, './#p=sms');
+  const mp4 = await recordSmsClip();
+
+  // Act
+  await pickClip(page, { name: 'sms.mp4', mimeType: 'video/mp4', buffer: mp4 });
+
+  // Assert
+  await expect(page.locator('#source-info')).toHaveText(
+    /^256 x 192 native, Detected 3x scale, \d+ fields at 59\.92 Hz$/
+  );
+  await expect(page.locator('#console-check-list li').first()).toHaveText(
+    '256x192: a native resolution of this preset.'
+  );
+  await expect(page.locator('#console-check-list li').nth(1)).toHaveText(
+    /^(1[0-6]|[1-9]) colors on screen, within the limit of 32\.$/
+  );
+  await expect(page.locator('#console-check-list li').last()).toHaveText(
+    "Measured on a compressed video, after snapping each color to this console's palette."
+  );
   expect(problems).toEqual([]);
 });
 

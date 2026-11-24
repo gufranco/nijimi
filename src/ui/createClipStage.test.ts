@@ -28,7 +28,8 @@ const clipOf = async (): Promise<LoadedClip> => {
       frame: { width: 8, height: 2, data: new Float32Array(48) },
       scale: 1,
       detectedScale: 1,
-      stats: { colors: 2, levels: 2 }
+      stats: { colors: 2, levels: 2 },
+      presence: null
     },
     frames: await store.seal(8 * 2 * 4),
     times: [0, 0.02],

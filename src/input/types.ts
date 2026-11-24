@@ -13,6 +13,7 @@ export interface LoadedImage {
   readonly scale: number;
   readonly detectedScale: number;
   readonly stats: ColorStats;
+  readonly presence: Uint32Array | null;
 }
 
 export type InputResult<T> =
@@ -29,6 +30,7 @@ export type LoadResult = InputResult<LoadedImage>;
 export type VisitFrame = (frame: RgbaImage, seconds: number) => Promise<boolean>;
 
 export interface ClipSource {
+  readonly lossy: boolean;
   readonly each: (visit: VisitFrame) => Promise<number>;
   readonly close: () => void;
 }

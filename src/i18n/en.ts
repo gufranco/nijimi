@@ -161,6 +161,8 @@ export const EN: Messages = {
   checkLevelsFail: '{found} levels per color channel: more than the {limit} its palette has.',
   checkLevelsSkipped: 'Palette values not checked: NES colors have no fixed RGB values.',
   checkCustom: 'Custom timing: no console check.',
+  checkLossy:
+    "Measured on a compressed video, after snapping each color to this console's palette.",
   modeInterlace: 'interlace',
   modePalV30: 'PAL V30 mode',
   modeSms2Vdp: 'the Master System II VDP',

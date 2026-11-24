@@ -69,6 +69,6 @@ export const loadPng = async (input: {
   const frame = toRgbFrame(image, scale);
   return {
     ok: true,
-    value: { frame, scale, detectedScale: detected, stats: colorStats(frame) }
+    value: { frame, scale, detectedScale: detected, stats: colorStats(frame), presence: null }
   };
 };

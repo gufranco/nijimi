@@ -27,7 +27,7 @@ test('renders a PNG chosen with the picker, with no accessibility violations', a
   // Assert
   await expect(page.locator('#empty-state')).toBeHidden();
   await expect(page.locator('#source-info')).toHaveText('64 x 48 native');
-  await expect(page.locator('#export-button')).toBeEnabled();
+  await expect(page.locator('#export-button')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(problems).toEqual([]);
 });

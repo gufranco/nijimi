@@ -162,6 +162,8 @@ export const PT_BR: Messages = {
   checkLevelsSkipped:
     'Valores da paleta não verificados: as cores do NES não têm valores RGB fixos.',
   checkCustom: 'Tempo personalizado: sem verificação de console.',
+  checkLossy:
+    'Medido em um vídeo comprimido, depois de aproximar cada cor da paleta deste console.',
   modeInterlace: 'entrelaçamento',
   modePalV30: 'modo V30 PAL',
   modeSms2Vdp: 'o VDP do Master System II',

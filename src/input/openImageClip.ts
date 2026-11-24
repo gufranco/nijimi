@@ -40,6 +40,7 @@ export const openImageClip = async (input: {
   const count = required(decoder.tracks.selectedTrack, 'image track').frameCount;
   const { starts, total } = await frameTimes(decoder, count);
   return {
+    lossy: false,
     each: async (visit) => {
       for (let frameIndex = 0; frameIndex < count; frameIndex += 1) {
         const { image } = await decoder.decode({ frameIndex });

@@ -156,6 +156,7 @@ export interface Messages {
   readonly checkLevelsFail: string;
   readonly checkLevelsSkipped: string;
   readonly checkCustom: string;
+  readonly checkLossy: string;
   readonly modeInterlace: string;
   readonly modePalV30: string;
   readonly modeSms2Vdp: string;

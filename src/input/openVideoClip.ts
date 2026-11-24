@@ -76,6 +76,7 @@ export const openVideoClip = async (input: {
     throw error;
   });
   return {
+    lossy: true,
     each: playFrames(video),
     close: () => {
       release(video, url);

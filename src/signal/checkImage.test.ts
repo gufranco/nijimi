@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CheckOutcome } from './checkOutcome';
 import { checkImage } from './checkImage';
+import { createColorCounter } from './createColorCounter';
 import { ConsolePreset } from './consolePreset';
 import { SpecialMode } from './specialMode';
 import { VideoStandard } from './videoStandard';
@@ -12,6 +13,7 @@ const input = (
   width: 320,
   height: 224,
   stats: { colors: 40, levels: 6 },
+  presence: null,
   preset: ConsolePreset.GenesisH40,
   standard: VideoStandard.Ntsc,
   ...overrides
@@ -44,7 +46,8 @@ describe('checkImage', () => {
         ]
       },
       colors: { outcome: CheckOutcome.Pass, found: 40, limit: 61, needs: null },
-      levels: { outcome: CheckOutcome.Pass, found: 6, limit: 8, needs: null }
+      levels: { outcome: CheckOutcome.Pass, found: 6, limit: 8, needs: null },
+      lossy: false
     });
   });
 
@@ -306,5 +309,57 @@ describe('checkImage', () => {
 
     // Assert
     expect(outcomes).toEqual([CheckOutcome.Pass, CheckOutcome.Fail]);
+  });
+
+  it('counts the colors of a compressed video after snapping them to the console palette', () => {
+    // Arrange
+    const counter = createColorCounter();
+    const noisy = [0, 85, 170, 255].flatMap((level) => [
+      level,
+      Math.min(255, level + 20),
+      Math.max(0, level - 20)
+    ]);
+    counter.add({
+      width: noisy.length,
+      height: 1,
+      data: Float32Array.from(noisy.flatMap((level) => [level / 255, 0, 0]))
+    });
+    const picture = input({
+      width: 256,
+      height: 192,
+      preset: ConsolePreset.MasterSystem,
+      stats: counter.stats(),
+      presence: counter.presence()
+    });
+
+    // Act
+    const report = checkImage(picture);
+
+    // Assert
+    expect([
+      picture.stats.colors,
+      report?.colors.found,
+      report?.levels.found,
+      report?.lossy
+    ]).toEqual([10, 4, 4, true]);
+  });
+
+  it('snaps to all 256 levels on a console without a palette depth limit', () => {
+    // Arrange
+    const counter = createColorCounter();
+    counter.add({ width: 2, height: 1, data: Float32Array.from([0.1, 0, 0, 0.104, 0, 0]) });
+    const picture = input({
+      width: 320,
+      height: 224,
+      preset: ConsolePreset.Atari7800W320,
+      stats: counter.stats(),
+      presence: counter.presence()
+    });
+
+    // Act
+    const report = checkImage(picture);
+
+    // Assert
+    expect([report?.colors.found, report?.levels.outcome]).toEqual([2, CheckOutcome.NotApplicable]);
   });
 });

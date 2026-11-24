@@ -92,7 +92,10 @@ const reportLines = (locale: Locale, report: ConsoleReport | null): readonly Lin
     : [
         ...resolutionLines(locale, report.resolution),
         tierLine(locale, report.colors, COLORS),
-        tierLine(locale, report.levels, LEVELS)
+        tierLine(locale, report.levels, LEVELS),
+        ...(report.lossy
+          ? [{ outcome: CheckOutcome.NotApplicable, text: translate(locale, 'checkLossy') }]
+          : [])
       ];
 
 export const renderConsoleCheck = (input: {

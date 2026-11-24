@@ -164,6 +164,7 @@ export interface ConsoleReport {
   readonly resolution: ResolutionCheck;
   readonly colors: TierCheck;
   readonly levels: TierCheck;
+  readonly lossy: boolean;
 }
 
 export interface PackedSignalImage {

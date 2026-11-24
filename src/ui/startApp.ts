@@ -99,6 +99,7 @@ const renderCheck = (ctx: Context, main: LoadedImage): void => {
       width: main.frame.width,
       height: main.frame.height,
       stats: main.stats,
+      presence: main.presence,
       preset: signal.preset,
       standard: signal.standard
     })
@@ -178,7 +179,7 @@ const refreshPreview = (ctx: Context): void => {
 const showLoaded = (ctx: Context): void => {
   const { main, flicker, clip } = ctx.read();
   ctx.elements.emptyState.toggleAttribute('hidden', main !== null);
-  ctx.elements.exportButton.toggleAttribute('disabled', main === null);
+  ctx.elements.exportButton.toggleAttribute('hidden', main === null || clip !== null);
   ctx.elements.exportVideoButton.toggleAttribute(
     'hidden',
     clip === null || ctx.deps.recordingType === null
@@ -193,6 +194,8 @@ const decodeClip = async (ctx: Context, source: ClipSource): Promise<ClipResult>
   return loadClip({
     source,
     scaleOverride: ctx.read().settings.scale,
+    preset: ctx.read().settings.signal.preset,
+    standard: ctx.read().settings.signal.standard,
     store: await ctx.deps.openStore(),
     onProgress: (decoded) => {
       ctx.elements.busyProgress.replaceChildren(

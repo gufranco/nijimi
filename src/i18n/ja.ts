@@ -161,6 +161,7 @@ export const JA: Messages = {
   checkLevelsFail: '各色チャンネル {found} 段階: パレットの {limit} 段階を超えています。',
   checkLevelsSkipped: 'パレット値は未チェック: ファミコンの色には決まったRGB値がありません。',
   checkCustom: 'カスタムタイミング: 実機チェックなし。',
+  checkLossy: '圧縮された動画のため、各色をこのゲーム機のパレットに丸めてから数えています。',
   modeInterlace: 'インターレース',
   modePalV30: 'PAL V30モード',
   modeSms2Vdp: 'マスターシステムIIのVDP',

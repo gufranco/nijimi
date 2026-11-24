@@ -10,7 +10,8 @@ const CLIP: LoadedClip = {
     frame: { width: 1, height: 1, data: new Float32Array(3) },
     scale: 1,
     detectedScale: 1,
-    stats: { colors: 1, levels: 1 }
+    stats: { colors: 1, levels: 1 },
+    presence: null
   },
   frames: await createMemoryStore().seal(4),
   times: [0, 0.02, 0.04],

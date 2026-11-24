@@ -83,7 +83,7 @@ export const SHELL_HTML = `
         <button type="button" class="button" id="reset-view-button" data-i18n="resetView"></button>
       </div>
       <button type="button" class="button" id="fullscreen-button" data-i18n="fullscreen"></button>
-      <button type="button" class="button" id="export-button" data-i18n="exportPng" disabled></button>
+      <button type="button" class="button" id="export-button" data-i18n="exportPng" hidden></button>
       <button type="button" class="button" id="export-video-button" data-i18n="exportVideo" hidden></button>
       <button type="button" class="button" id="copy-link-button" data-i18n="copyLink"></button>
     </div>

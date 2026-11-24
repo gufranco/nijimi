@@ -167,7 +167,7 @@ describe('startApp', () => {
     // Assert
     expect(page.query('#choose-button', HTMLElement).textContent).toBe('Choose PNG');
     expect(page.query('input[name=c]:checked', HTMLInputElement).value).toBe('composite');
-    expect(page.query('#export-button', HTMLButtonElement).disabled).toBe(true);
+    expect(page.query('#export-button', HTMLButtonElement).hidden).toBe(true);
     expect(page.query('#notice', HTMLElement).textContent).toBe('');
   });
 
@@ -223,7 +223,7 @@ describe('startApp', () => {
     // Assert
     expect(page.query('#crt-canvas', HTMLCanvasElement).width).toBeGreaterThan(0);
     expect(page.query('#empty-state', HTMLElement).hidden).toBe(true);
-    expect(page.query('#export-button', HTMLButtonElement).disabled).toBe(false);
+    expect(page.query('#export-button', HTMLButtonElement).hidden).toBe(false);
     expect(page.query('#source-info', HTMLElement).textContent).toBe(
       '8 x 4 native, Detected 8x scale'
     );
@@ -633,6 +633,7 @@ describe('startApp', () => {
       '2 x 1 native, 11 fields at 59.92 Hz'
     );
     expect(page.query('#export-video-button', HTMLButtonElement).hidden).toBe(false);
+    expect(page.query('#export-button', HTMLButtonElement).hidden).toBe(true);
     expect(page.query('#busy', HTMLElement).hidden).toBe(true);
     expect(page.query('#crt-canvas', HTMLCanvasElement).hasAttribute('width')).toBe(true);
     expect(page.query('#notice', HTMLElement).textContent).toBe('');
@@ -796,6 +797,7 @@ describe('startApp', () => {
       '8 x 4 native, Detected 8x scale'
     );
     expect(page.query('#export-video-button', HTMLButtonElement).hidden).toBe(true);
+    expect(page.query('#export-button', HTMLButtonElement).hidden).toBe(false);
   });
 
   it('reports a clip the worker refuses to render', async () => {

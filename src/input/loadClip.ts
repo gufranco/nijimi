@@ -1,10 +1,13 @@
 import { createAppendLog } from '../clip/createAppendLog';
 import type { FrameStore } from '../clip/types';
 import type { Logger } from '../logging/createLogger';
+import type { ConsolePreset } from '../signal/consolePreset';
 import { createColorCounter } from '../signal/createColorCounter';
+import type { VideoStandard } from '../signal/videoStandard';
 import { chooseScale } from './chooseScale';
 import { InputError } from './inputError';
 import { INPUT_LIMITS } from './inputLimits';
+import { lossyScale } from './lossyScale';
 import { nativeRgba } from './nativeRgba';
 import { toRgbFrame } from './toRgbFrame';
 import type { ClipResult, ClipSource, InputResult, LoadedClip, RgbaImage } from './types';
@@ -14,6 +17,8 @@ const RGBA = 4;
 interface LoadClipInput {
   readonly source: ClipSource;
   readonly scaleOverride: number;
+  readonly preset: ConsolePreset;
+  readonly standard: VideoStandard;
   readonly store: FrameStore;
   readonly onProgress: (decoded: number) => void;
   readonly logger: Logger;
@@ -24,6 +29,7 @@ interface Shape {
   readonly height: number;
   readonly scale: number;
   readonly detected: number;
+  readonly phase: number;
   readonly first: RgbaImage;
 }
 
@@ -34,17 +40,33 @@ const refuse = <T>(error: InputError, width: number, height: number): InputResul
   height
 });
 
-const measure = (frame: RgbaImage, override: number): InputResult<Shape> => {
+const pickScale = (
+  frame: RgbaImage,
+  input: LoadClipInput
+): { readonly scale: number; readonly detected: number } => {
+  const chosen = chooseScale(frame, input.scaleOverride);
+  if (!input.source.lossy || chosen.scale !== 1 || input.scaleOverride !== 0) {
+    return chosen;
+  }
+  const scale = lossyScale({ ...input, width: frame.width, height: frame.height });
+  return { scale, detected: scale };
+};
+
+const measure = (frame: RgbaImage, input: LoadClipInput): InputResult<Shape> => {
   if (frame.width > INPUT_LIMITS.maxFileSide || frame.height > INPUT_LIMITS.maxFileSide) {
     return refuse(InputError.TooLarge, frame.width, frame.height);
   }
-  const { scale, detected } = chooseScale(frame, override);
+  const { scale, detected } = pickScale(frame, input);
   const width = frame.width / scale;
   const height = frame.height / scale;
   if (width > INPUT_LIMITS.maxNativeSide || height > INPUT_LIMITS.maxNativeSide) {
     return refuse(InputError.TooLarge, width, height);
   }
-  return { ok: true, value: { width, height, scale, detected, first: nativeRgba(frame, scale) } };
+  const phase = input.source.lossy ? Math.floor(scale / 2) : 0;
+  return {
+    ok: true,
+    value: { width, height, scale, detected, phase, first: nativeRgba(frame, scale, phase) }
+  };
 };
 
 const decodeClip = async (input: LoadClipInput): Promise<ClipResult> => {
@@ -54,8 +76,7 @@ const decodeClip = async (input: LoadClipInput): Promise<ClipResult> => {
   let refusal: ClipResult | null = null;
   let decoded = 0;
   const visit = async (frame: RgbaImage, seconds: number): Promise<boolean> => {
-    const measured =
-      shape === null ? measure(frame, input.scaleOverride) : { ok: true as const, value: shape };
+    const measured = shape === null ? measure(frame, input) : { ok: true as const, value: shape };
     if (!measured.ok) {
       refusal = measured;
       return false;
@@ -66,7 +87,7 @@ const decodeClip = async (input: LoadClipInput): Promise<ClipResult> => {
       return false;
     }
     shape = value;
-    const native = nativeRgba(frame, value.scale);
+    const native = nativeRgba(frame, value.scale, value.phase);
     counter.add(toRgbFrame(native, 1));
     await input.store.append(native.data);
     times.append(seconds);
@@ -92,7 +113,8 @@ const decodeClip = async (input: LoadClipInput): Promise<ClipResult> => {
         frame: toRgbFrame(found.first, 1),
         scale: found.scale,
         detectedScale: found.detected,
-        stats: counter.stats()
+        stats: counter.stats(),
+        presence: input.source.lossy ? counter.presence() : null
       },
       frames,
       times: times.items(),

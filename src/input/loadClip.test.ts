@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createMemoryStore } from '../clip/createMemoryStore';
 import type { FrameStore } from '../clip/types';
 import { createLogger } from '../logging/createLogger';
+import { ConsolePreset } from '../signal/consolePreset';
+import { VideoStandard } from '../signal/videoStandard';
 import type { Logger } from '../logging/createLogger';
 import { InputError } from './inputError';
 import { loadClip } from './loadClip';
@@ -31,13 +33,18 @@ interface Played {
   readonly offered: number[];
 }
 
-const played = (frames: readonly (readonly [RgbaImage, number])[], duration: number): Played => {
+const played = (
+  frames: readonly (readonly [RgbaImage, number])[],
+  duration: number,
+  lossy = false
+): Played => {
   const closed: string[] = [];
   const offered: number[] = [];
   return {
     closed,
     offered,
     source: {
+      lossy,
       each: async (visit) => {
         for (const [frame, seconds] of frames) {
           offered.splice(offered.length, 0, seconds);
@@ -66,6 +73,8 @@ const load = (
   loadClip({
     source,
     scaleOverride: overrides.scaleOverride ?? 1,
+    preset: ConsolePreset.MasterSystem,
+    standard: VideoStandard.Ntsc,
     store: overrides.store ?? createMemoryStore(),
     onProgress: (decoded) => overrides.progress?.splice(overrides.progress.length, 0, decoded),
     logger: sinkLogger(overrides.sink ?? [])
@@ -203,5 +212,58 @@ describe('loadClip', () => {
       'clip decoding failed, refusing the clip as corrupt'
     ]);
     expect(clip.closed).toEqual(['closed']);
+  });
+
+  it('finds the console scale of a compressed video and samples each block at its centre', async () => {
+    // Arrange
+    const noisy: RgbaImage = {
+      width: 768,
+      height: 576,
+      data: Uint8ClampedArray.from({ length: 768 * 576 * 4 }, (_, index) =>
+        index % 4 === 3 ? 255 : 80 + ((index * 37) % 7)
+      )
+    };
+    const clip = played([[noisy, 0]], 0.1, true);
+
+    // Act
+    const result = await load(clip.source, { scaleOverride: 0 });
+
+    // Assert
+    expect(
+      result.ok
+        ? [
+            result.value.image.frame.width,
+            result.value.image.frame.height,
+            result.value.image.detectedScale,
+            result.value.image.presence?.length
+          ]
+        : []
+    ).toEqual([256, 192, 3, 524_288]);
+  });
+
+  it('keeps an exact upscale or a chosen scale on a compressed video', async () => {
+    // Arrange
+    const exact = played([[solid(768, 576, [1, 2, 3]), 0]], 0.1, true);
+    const chosen = played([[solid(768, 576, [1, 2, 3]), 0]], 0.1, true);
+
+    // Act
+    const results = [
+      await load(exact.source, { scaleOverride: 0 }),
+      await load(chosen.source, { scaleOverride: 1 })
+    ];
+
+    // Assert
+    expect(results.map((result) => (result.ok ? result.value.image.scale : 0))).toEqual([8, 1]);
+  });
+
+  it('keeps no palette data for a lossless clip', async () => {
+    // Arrange
+    const clip = played([[solid(4, 2, [1, 2, 3]), 0]], 0.1);
+
+    // Act
+    const result = await load(clip.source);
+
+    // Assert
+    expect(result.ok ? result.value.image.presence : 'refused').toBeNull();
   });
 });

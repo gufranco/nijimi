@@ -14,6 +14,7 @@ const GREEN_SHIFT = 8;
 export interface ColorCounter {
   readonly add: (frame: RgbFrame) => void;
   readonly stats: () => ColorStats;
+  readonly presence: () => Uint32Array;
 }
 
 interface PixelTables {
@@ -68,6 +69,7 @@ export const createColorCounter = (): ColorCounter => {
         );
       }
     },
+    presence: () => tables.seen.slice(),
     stats: () => ({
       colors,
       levels: Math.max(usedLevels(tables.red), usedLevels(tables.green), usedLevels(tables.blue))
