@@ -339,16 +339,16 @@ const bindActions = (ctx: Context): void => {
     if (clip === null || mimeType === null) {
       return;
     }
-    const recording = ctx.clips.rewind().then(() =>
-      exportClip({
-        clip: clip.loaded,
-        fieldRate: clipRate(ctx.read().settings),
-        mimeType,
-        canvas: elements.crtCanvas,
-        wait: deps.wait,
-        download: deps.download
-      })
-    );
+    const recording = exportClip({
+      clip: clip.loaded,
+      fieldRate: clipRate(ctx.read().settings),
+      mimeType,
+      canvas: elements.crtCanvas,
+      wait: deps.wait,
+      download: deps.download,
+      onStart: ctx.clips.rewind,
+      scheduler: deps.scheduler
+    });
     ctx.track(recording.catch(reportFailure(ctx, 'exportVideoFailed', 'video export failed')));
   });
   elements.copyLinkButton.addEventListener('click', () => {

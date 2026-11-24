@@ -147,7 +147,11 @@ describe('browserDeps', () => {
 
     // Assert
     expect(deps.imageDecoder).toBe(window.ImageDecoder);
-    expect(deps.recordingType).toBe('video/webm;codecs=vp9');
+    expect(deps.recordingType).toBe(
+      ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((type) =>
+        MediaRecorder.isTypeSupported(type)
+      )
+    );
     expect(performance.now() - started).toBeGreaterThanOrEqual(19);
   });
 

@@ -37,11 +37,21 @@ describe('exportClip', () => {
         waited.splice(waited.length, 0, ms);
         return new Promise((resolve) => setTimeout(resolve, ms));
       },
-      download: (blob, file) => downloads.splice(downloads.length, 0, `${file}:${blob.type}`)
+      download: (blob, file) => downloads.splice(downloads.length, 0, `${file}:${blob.type}`),
+      scheduler: {
+        request: (tick) => requestAnimationFrame(tick),
+        cancel: (handle) => {
+          cancelAnimationFrame(handle);
+        }
+      },
+      onStart: () => {
+        waited.splice(waited.length, 0, 0);
+        return Promise.resolve();
+      }
     });
 
     // Assert
-    expect(waited).toEqual([200]);
+    expect(waited).toEqual([0, 200]);
     expect(downloads).toEqual([`${name}:${mimeType}`]);
   });
 });

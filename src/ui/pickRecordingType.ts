@@ -1,4 +1,9 @@
-const RECORDING_TYPES = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'] as const;
+const RECORDING_TYPES = [
+  'video/mp4;codecs=avc1',
+  'video/mp4',
+  'video/webm;codecs=vp9',
+  'video/webm'
+] as const;
 
 interface Recorder {
   readonly isTypeSupported: (type: string) => boolean;

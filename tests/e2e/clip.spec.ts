@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -140,13 +142,48 @@ test('decodes an MP4 video, whose lossy blocks may or may not read as 8x', async
   expect(problems).toEqual([]);
 });
 
-const downloadVideo = async (page: Page): Promise<string> => {
+interface ExportedVideo {
+  readonly name: string;
+  readonly firstFrameLevel: number;
+}
+
+const downloadVideo = async (page: Page): Promise<ExportedVideo> => {
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export video' }).click();
-  return (await download).suggestedFilename();
+  const file = await download;
+  const bytes = Array.from(await readFile(await file.path()));
+  const firstFrameLevel = await page.evaluate(async (data: number[]) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.src = URL.createObjectURL(new Blob([new Uint8Array(data)]));
+    await new Promise((resolve) => {
+      video.addEventListener('loadeddata', resolve, { once: true });
+    });
+    const seeked = new Promise((resolve) => {
+      video.addEventListener('seeked', resolve, { once: true });
+    });
+    video.currentTime = 0;
+    await seeked;
+    const canvas = new OffscreenCanvas(video.videoWidth, video.videoHeight);
+    const context = canvas.getContext('2d');
+    context?.drawImage(video, 0, 0);
+    const pixels =
+      context?.getImageData(0, 0, canvas.width, canvas.height).data ?? new Uint8ClampedArray(4);
+    const total = pixels.reduce((sum, value, index) => (index % 4 === 3 ? sum : sum + value), 0);
+    return total / ((pixels.length / 4) * 3);
+  }, bytes);
+  return { name: file.suggestedFilename(), firstFrameLevel };
 };
 
-test('exports one loop of a clip as WebM where the browser can record, and hides the export where it cannot', async ({
+const recordedExtension = (page: Page): Promise<string> =>
+  page.evaluate(() =>
+    MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') ||
+    MediaRecorder.isTypeSupported('video/mp4')
+      ? 'mp4'
+      : 'webm'
+  );
+
+test('exports one loop of a clip whose first frame shows the picture, as MP4 where the browser records it, and hides the export without a recorder', async ({
   page
 }) => {
   // Arrange
@@ -155,12 +192,14 @@ test('exports one loop of a clip as WebM where the browser can record, and hides
   await expect(page.locator('#source-info')).toHaveText('16 x 8 native, 11 fields at 59.92 Hz');
   await waitForRender(page);
   const recordable = await canRecord(page);
+  const extension = recordable ? await recordedExtension(page) : null;
 
   // Act
-  const name = recordable ? await downloadVideo(page) : null;
+  const exported = recordable ? await downloadVideo(page) : null;
 
   // Assert
-  expect(name).toBe(recordable ? 'nijimi-crt.webm' : null);
+  expect(exported?.name ?? null).toBe(extension === null ? null : `nijimi-crt.${extension}`);
+  expect(exported === null || exported.firstFrameLevel > 10).toBe(true);
   await expect(page.locator('#export-video-button')).toBeVisible({ visible: recordable });
   expect(problems).toEqual([]);
 });
