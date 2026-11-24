@@ -2,6 +2,7 @@ import type { LoadedClip, LoadedImage } from '../input/types';
 import type { MessageKey } from '../i18n/types';
 import type { AppSettings } from '../settings/types';
 import type { RgbFrame } from '../signal/types';
+import type { ExportEncoding } from './pickExportEncoding';
 
 export interface Notice {
   readonly key: MessageKey;
@@ -22,4 +23,5 @@ export interface AppState {
   readonly flicker: RgbFrame | null;
   readonly framesVersion: number;
   readonly notice: Notice | null;
+  readonly exportEncoding: ExportEncoding | null;
 }

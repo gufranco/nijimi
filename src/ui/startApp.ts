@@ -1,3 +1,5 @@
+import { canEncodeVideo } from 'mediabunny';
+
 import { DisplayKind } from '../display/displayKind';
 import { required } from '../display/required';
 import { detectLocale } from '../i18n/detectLocale';
@@ -153,14 +155,19 @@ const refreshPreview = (ctx: Context): void => {
   ctx.track(ctx.preview.update({ frames, framesVersion, settings }));
 };
 
+const showVideoExport = (ctx: Context): void => {
+  const { clip, exportEncoding } = ctx.read();
+  ctx.elements.exportVideoButton.toggleAttribute(
+    'hidden',
+    clip === null || exportEncoding === null
+  );
+};
+
 const showLoaded = (ctx: Context): void => {
   const { main, flicker, clip } = ctx.read();
   ctx.elements.emptyState.toggleAttribute('hidden', main !== null);
   ctx.elements.exportButton.toggleAttribute('hidden', main === null || clip !== null);
-  ctx.elements.exportVideoButton.toggleAttribute(
-    'hidden',
-    clip === null || ctx.deps.recordingType(false) === null
-  );
+  showVideoExport(ctx);
   ctx.elements.flickerRemoveButton.toggleAttribute('hidden', flicker === null);
   if (clip === null) {
     renderDeck({ elements: ctx.elements, locale: localeOf(ctx), fieldRate: 1, state: null });
@@ -249,23 +256,32 @@ const bindActions = (ctx: Context): void => {
     ctx.track(exporting.catch(reportFailure(ctx, 'exportFailed', 'PNG export failed')));
   });
   elements.exportVideoButton.addEventListener('click', () => {
-    const { clip } = ctx.read();
-    const mimeType = clip === null ? null : deps.recordingType(clip.loaded.audio);
-    if (clip === null || mimeType === null) {
+    const { clip, exportEncoding, settings } = ctx.read();
+    if (clip === null || exportEncoding === null) {
       return;
     }
-    const recording = exportClip({
-      clip: clip.loaded,
-      fieldRate: clipRate(ctx.read().settings),
-      mimeType,
-      canvas: elements.crtCanvas,
-      wait: deps.wait,
-      download: deps.download,
-      onStart: ctx.clips.restart,
-      scheduler: deps.scheduler,
-      audio: ctx.clips.audioStream()
-    });
-    ctx.track(recording.catch(reportFailure(ctx, 'exportVideoFailed', 'video export failed')));
+    setBusy(ctx, true);
+    const exporting = ctx.clips
+      .pause()
+      .then(() =>
+        exportClip({
+          clip: clip.loaded,
+          source: clip.blob,
+          fieldRate: clipRate(settings),
+          encoding: exportEncoding,
+          canvas: elements.crtCanvas,
+          seek: ctx.clips.seek,
+          onProgress: (done, total) => {
+            setProgress(ctx, done, total);
+          },
+          download: deps.download,
+          canEncodeVideo
+        })
+      )
+      .finally(() => {
+        setBusy(ctx, false);
+      });
+    ctx.track(exporting.catch(reportFailure(ctx, 'exportVideoFailed', 'video export failed')));
   });
   elements.copyLinkButton.addEventListener('click', () => {
     const copying = deps.copyText(deps.currentUrl()).then(() => {
@@ -367,7 +383,8 @@ export const startApp = (deps: AppDeps): App => {
     clip: null,
     flicker: null,
     framesVersion: 0,
-    notice: firstNotice(parsed, display.kind)
+    notice: firstNotice(parsed, display.kind),
+    exportEncoding: null
   };
   const client = createSignalClient({ worker: deps.worker, timeoutMs: SIGNAL_TIMEOUT_MS });
   const clients = createSignalPool({ first: client, deps, timeoutMs: SIGNAL_TIMEOUT_MS });
@@ -429,6 +446,12 @@ export const startApp = (deps: AppDeps): App => {
   bindForms(ctx);
   bindCompare(elements);
   bindActions(ctx);
+  ctx.track(
+    deps.exportEncoding.then((exportEncoding) => {
+      ctx.update(() => ({ exportEncoding }));
+      showVideoExport(ctx);
+    })
+  );
   bindDeck({ elements, transport: ctx.clips, track: ctx.track });
   bindFullscreen({
     button: elements.fullscreenButton,

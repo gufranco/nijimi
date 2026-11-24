@@ -8,6 +8,7 @@ import { createMemoryStore } from '../clip/createMemoryStore';
 import type { FrameStore } from '../clip/types';
 import { createLogger } from '../logging/createLogger';
 import { startApp } from './startApp';
+import { ExportContainer } from './pickExportEncoding';
 import type { App, AppDeps } from './types';
 
 const created: { worker: Worker; root: HTMLElement }[] = [];
@@ -97,11 +98,6 @@ const SCHEDULER: AppDeps['scheduler'] = {
   }
 };
 
-const wait = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
 const boot = (overrides: Partial<AppDeps> = {}): Booted => {
   const root = document.createElement('div');
   root.id = 'app';
@@ -126,8 +122,7 @@ const boot = (overrides: Partial<AppDeps> = {}): Booted => {
     download: (blob, name) => downloads.splice(downloads.length, 0, `${name}:${blob.type}`),
     scheduler: SCHEDULER,
     imageDecoder: ImageDecoder,
-    recordingType: () => 'video/webm',
-    wait,
+    exportEncoding: Promise.resolve({ container: ExportContainer.Webm, video: 'vp9', audio: null }),
     openStore: () => Promise.resolve(createMemoryStore()),
     createWorker: () => {
       const extra = new Worker(new URL('../worker/signal.worker.ts', import.meta.url), {
@@ -622,8 +617,7 @@ describe('startApp', () => {
       download: () => undefined,
       scheduler: SCHEDULER,
       imageDecoder: undefined,
-      recordingType: () => null,
-      wait,
+      exportEncoding: Promise.resolve(null),
       openStore: () => Promise.resolve(createMemoryStore()),
       createWorker: () => Object.assign(new EventTarget(), { postMessage: () => undefined }),
       workerCount: 1
@@ -665,9 +659,16 @@ describe('startApp', () => {
     expect(page.downloads).toEqual(['nijimi-crt.webm:video/webm']);
   });
 
-  it('reports a video export the recorder refuses', async () => {
+  it('reports a video export the encoder refuses', async () => {
     // Arrange
-    const page = boot({ hash: '#p=genesis-h40', recordingType: () => 'video/x-none' });
+    const page = boot({
+      hash: '#p=genesis-h40',
+      exportEncoding: Promise.resolve({
+        container: ExportContainer.Webm,
+        video: 'avc',
+        audio: null
+      })
+    });
     await page.pick(gifFile(10), '#clip-input');
 
     // Act
@@ -693,9 +694,9 @@ describe('startApp', () => {
     expect(page.downloads).toEqual([]);
   });
 
-  it('hides the video export and records nothing when the browser cannot record', async () => {
+  it('hides the video export and encodes nothing when the browser cannot encode video', async () => {
     // Arrange
-    const page = boot({ recordingType: () => null });
+    const page = boot({ exportEncoding: Promise.resolve(null) });
     await page.pick(gifFile(10), '#clip-input');
 
     // Act

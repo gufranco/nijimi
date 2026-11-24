@@ -1,8 +1,10 @@
+import { canEncodeAudio, canEncodeVideo } from 'mediabunny';
+
 import { openClipDirectory } from '../clip/openClipDirectory';
 import { openFrameStore } from '../clip/openFrameStore';
 import { createDisplay } from '../display/createDisplay';
 import { createLogger } from '../logging/createLogger';
-import { pickRecordingType } from './pickRecordingType';
+import { pickExportEncoding } from './pickExportEncoding';
 import type { AppDeps } from './types';
 
 const MAX_WORKERS = 8;
@@ -63,11 +65,10 @@ export const browserDeps = (win: Window & typeof globalThis): AppDeps => {
       }
     },
     imageDecoder: win.ImageDecoder,
-    recordingType: (audio) => pickRecordingType(win.MediaRecorder, audio),
-    wait: (ms) =>
-      new Promise((resolve) => {
-        win.setTimeout(resolve, ms);
-      }),
+    exportEncoding: pickExportEncoding({
+      canEncodeVideo: (codec) => canEncodeVideo(codec),
+      canEncodeAudio: (codec) => canEncodeAudio(codec)
+    }),
     openStore: async () => openFrameStore({ clips: await clips, name: win.crypto.randomUUID() }),
     createWorker: signalWorker,
     workerCount: Math.max(

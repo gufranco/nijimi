@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 import { DisplayKind } from '../display/displayKind';
+import { ExportContainer } from './pickExportEncoding';
 import { browserDeps } from './browserDeps';
 import type { AppDeps } from './types';
 
@@ -138,28 +139,16 @@ describe('browserDeps', () => {
     expect(Math.abs(deps.scheduler.now() - performance.now())).toBeLessThan(1000);
   });
 
-  it('offers the image decoder, a recording type and a timer', async () => {
+  it('offers the image decoder and the video encoding this browser can make', async () => {
     // Arrange
     const deps = depsFor();
-    const started = performance.now();
 
     // Act
-    await deps.wait(20);
+    const encoding = await deps.exportEncoding;
 
     // Assert
     expect(deps.imageDecoder).toBe(window.ImageDecoder);
-    expect([deps.recordingType(false), deps.recordingType(true)]).toEqual([
-      ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((type) =>
-        MediaRecorder.isTypeSupported(type)
-      ),
-      [
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4',
-        'video/webm;codecs=vp9,opus',
-        'video/webm'
-      ].find((type) => MediaRecorder.isTypeSupported(type))
-    ]);
-    expect(performance.now() - started).toBeGreaterThanOrEqual(19);
+    expect(encoding).toEqual({ container: ExportContainer.Mp4, video: 'avc', audio: 'opus' });
   });
 
   it('stores clip frames in the private file system and uses half the cores for workers, at most 8', async () => {

@@ -3,6 +3,7 @@ import type { Logger } from '../logging/createLogger';
 import type { FrameStore } from '../clip/types';
 import type { WorkerLike } from '../worker/createRpcClient';
 import type { Scheduler } from './createClipPlayer';
+import type { ExportEncoding } from './pickExportEncoding';
 
 export interface AppDeps {
   readonly doc: Document;
@@ -17,8 +18,7 @@ export interface AppDeps {
   readonly download: (blob: Blob, name: string) => void;
   readonly scheduler: Scheduler;
   readonly imageDecoder: typeof ImageDecoder | undefined;
-  readonly recordingType: (audio: boolean) => string | null;
-  readonly wait: (ms: number) => Promise<void>;
+  readonly exportEncoding: Promise<ExportEncoding | null>;
   readonly openStore: () => Promise<FrameStore>;
   readonly createWorker: () => WorkerLike;
   readonly workerCount: number;
